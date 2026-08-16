@@ -19,32 +19,35 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 document.body.appendChild(renderer.domElement);
 
-/* --- MANUALNY PRZYCISK VR --- */
+/* --- PRZYCISK VR --- */
 const vrBtn = document.createElement('button');
 vrBtn.id = 'vr-toggle';
 vrBtn.textContent = 'Wejdź w VR';
 vrBtn.className = 'hud-btn';
+vrBtn.style.position = 'fixed';
 vrBtn.style.top = '16px';
-vrBtn.style.right = '140px';
+vrBtn.style.right = '16px';
+vrBtn.style.zIndex = '9999';
 document.body.appendChild(vrBtn);
 
 vrBtn.addEventListener('click', async () => {
   if (!navigator.xr) {
-    alert('Twoja przeglądarka nie obsługuje WebXR. Użyj Chrome na Androidzie lub Quest Browser.');
+    alert('Twoja przeglądarka nie obsługuje WebXR.');
     return;
   }
+  
   if (renderer.xr.isPresenting) {
     await renderer.xr.getSession().end();
-  } else {
-    try {
-      const session = await navigator.xr.requestSession('immersive-vr', {
-        requiredFeatures: ['local-floor']
-      });
-      await renderer.xr.setSession(session);
-    } catch (e) {
-      console.error('VR error:', e);
-      alert('Nie udało się uruchomić VR: ' + e.message);
-    }
+    return;
+  }
+  
+  try {
+    // Bez requiredFeatures - działa na więcej urządzeniach
+    const session = await navigator.xr.requestSession('immersive-vr');
+    await renderer.xr.setSession(session);
+  } catch (e) {
+    console.error('VR error:', e);
+    alert('Nie udało się uruchomić VR: ' + e.message);
   }
 });
 
@@ -52,35 +55,38 @@ const rig = new THREE.Group();
 scene.add(rig);
 rig.add(camera);
 
-const { floors } = buildGallery(scene);
-let interactiveArtworks = [];
+const { floors, colliders } = buildGallery(scene);
 loadArtworks(scene).then(list => { interactiveArtworks = list; });
+let interactiveArtworks = [];
 
 const controls = new GalleryControls(camera, renderer.domElement, scene);
+controls.setColliders(colliders);
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 let inXR = false;
 let dwell = 0;
 const TELEPORT_DWELL = 1.5;
+let doorCooldown = 0;
 
 renderer.xr.addEventListener('sessionstart', () => {
   vrBtn.textContent = 'Wyjdź z VR';
   inXR = true;
   rig.position.set(controls.player.x, 0, controls.player.z);
-  camera.position.set(0, 1.6, 0);
+  camera.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
-  const ring = document.getElementById('reticle-ring');
-  if (ring) ring.style.display = 'block';
+  document.getElementById('reticle-ring').style.display = 'block';
+  document.getElementById('hud').classList.add('hidden');
 });
 
 renderer.xr.addEventListener('sessionend', () => {
   vrBtn.textContent = 'Wejdź w VR';
   inXR = false;
-  controls.player.set(rig.position.x, 1.6, rig.position.z);
+  controls.player.set(rig.position.x, 0, rig.position.z);
   rig.position.set(0, 0, 0);
-  const ring = document.getElementById('reticle-ring');
-  if (ring) ring.style.display = 'none';
+  document.getElementById('reticle-ring').style.display = 'none';
+  controls.setMode('fpp');
+  document.getElementById('hud').classList.remove('hidden');
 });
 
 function updateGazeTeleport(dt) {
@@ -90,7 +96,7 @@ function updateGazeTeleport(dt) {
   camera.getWorldPosition(origin);
   const fill = document.getElementById('reticle-fill');
 
-  if (dir.y < -0.15 && fill) {
+  if (dir.y < -0.15) {
     raycaster.set(origin, dir);
     const hits = raycaster.intersectObjects(floors);
     if (hits.length) {
@@ -106,17 +112,26 @@ function updateGazeTeleport(dt) {
     }
   }
   dwell = 0;
-  if (fill) fill.style.height = '0%';
+  fill.style.height = '0%';
 }
 
-function checkDoorTriggers() {
+function checkDoorTriggers(dt) {
+  if (doorCooldown > 0) {
+    doorCooldown -= dt;
+    return;
+  }
+  
   const pos = inXR ? rig.position : controls.player;
-  if (!DOOR_TRIGGERS) return;
   for (const trigger of DOOR_TRIGGERS) {
-    if (trigger.pos.distanceTo(pos) < 1.8) {
+    const dist = trigger.pos.distanceTo(pos);
+    if (dist < 2.0) {
       const target = SPAWN_POINTS[trigger.to];
-      if (inXR) rig.position.copy(target);
-      else controls.player.copy(target);
+      if (inXR) {
+        rig.position.copy(target);
+      } else {
+        controls.player.copy(target);
+      }
+      doorCooldown = 2.0; // 2 sekundy cooldown
       return;
     }
   }
@@ -128,13 +143,11 @@ function updateCaption() {
   const origin = new THREE.Vector3();
   camera.getWorldPosition(origin);
   raycaster.set(origin, dir);
-  const hits = raycaster.intersectObjects(interactiveArtworks.flatMap(g => g.children || []), false);
+  const hits = raycaster.intersectObjects(interactiveArtworks.map(g => g).flatMap(g => g.children), false);
   const captionEl = document.getElementById('artwork-caption');
-  if (!captionEl) return;
-  
   if (hits.length && hits[0].distance < 6) {
     let group = hits[0].object.parent;
-    captionEl.textContent = group.userData?.caption || '';
+    captionEl.textContent = group.userData.caption || '';
     captionEl.classList.remove('hidden');
   } else {
     captionEl.classList.add('hidden');
@@ -143,13 +156,15 @@ function updateCaption() {
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
+  
   if (inXR) {
     updateGazeTeleport(dt);
   } else {
     controls.update(dt);
     updateCaption();
   }
-  checkDoorTriggers();
+  
+  checkDoorTriggers(dt);
   renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
@@ -167,7 +182,6 @@ function startExperience(mode) {
   document.getElementById('hud').classList.remove('hidden');
   renderer.domElement.requestPointerLock();
 }
-
 document.getElementById('start-fpp').addEventListener('click', () => startExperience('fpp'));
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
 document.getElementById('toggle-mode').addEventListener('click', () => controls.toggleMode());
