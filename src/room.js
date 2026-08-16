@@ -9,7 +9,6 @@ export const ROOMS = {
 const DOOR_W = 3.5;
 
 /* ========== TEKSTURY PROCEDURALNE ========== */
-
 function createFloorTexture() {
   const c = document.createElement('canvas');
   c.width = 1024; c.height = 1024;
@@ -61,7 +60,6 @@ function createCeilingTexture() {
 }
 
 /* ========== MEBLE ========== */
-
 function createBubbleSofa() {
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.05 });
@@ -147,15 +145,26 @@ function createRoundWindow() {
   return g;
 }
 
-function addWall(scene, w, h, x, y, z, ry, mat) {
+// Dodaje ścianę wizualną (PlaneGeometry) i kolizyjną (BoxGeometry niewidzialna)
+function addWall(scene, w, h, x, y, z, ry, mat, colliders) {
+  // Ściana wizualna
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
   wall.position.set(x, y, z);
   wall.rotation.y = ry;
   scene.add(wall);
+  
+  // Ściana kolizyjna (grubsza dla pewności)
+  const collider = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, 0.3),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  collider.position.set(x, y, z);
+  collider.rotation.y = ry;
+  scene.add(collider);
+  if (colliders) colliders.push(collider);
 }
 
 /* ========== BUDOWA GALERII ========== */
-
 export function buildGallery(scene) {
   const floorTex = createFloorTexture();
   const wallTex = createPlasterTexture();
@@ -166,26 +175,29 @@ export function buildGallery(scene) {
   const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.8, metalness: 0.0, color: 0xffffff });
 
   const floors = [];
+  const colliders = [];
 
   // --- Sala główna ---
   const M = ROOMS.main;
   const mainFloor = new THREE.Mesh(new THREE.PlaneGeometry(M.width, M.depth), floorMat);
   mainFloor.rotation.x = -Math.PI / 2; mainFloor.position.set(M.x, 0, M.z);
-  mainFloor.receiveShadow = true; mainFloor.name = 'floor';
+  mainFloor.receiveShadow = true;
   scene.add(mainFloor); floors.push(mainFloor);
 
   const mainCeil = new THREE.Mesh(new THREE.PlaneGeometry(M.width, M.depth), ceilMat);
   mainCeil.rotation.x = Math.PI / 2; mainCeil.position.set(M.x, M.height, M.z);
   scene.add(mainCeil);
 
-  addWall(scene, M.width, M.height, M.x, M.height/2, M.z - M.depth/2, 0, wallMat);
-  addWall(scene, M.width, M.height, M.x, M.height/2, M.z + M.depth/2, Math.PI, wallMat);
+  // Ściany północna i południowa (całe)
+  addWall(scene, M.width, M.height, M.x, M.height/2, M.z - M.depth/2, 0, wallMat, colliders);
+  addWall(scene, M.width, M.height, M.x, M.height/2, M.z + M.depth/2, Math.PI, wallMat, colliders);
 
+  // Ściany wschodnia i zachodnia z otworami na drzwi
   const leftM = (M.depth - DOOR_W) / 2;
-  addWall(scene, leftM, M.height, M.x - M.width/2, M.height/2, M.z - M.depth/2 + leftM/2, Math.PI/2, wallMat);
-  addWall(scene, leftM, M.height, M.x - M.width/2, M.height/2, M.z + M.depth/2 - leftM/2, Math.PI/2, wallMat);
-  addWall(scene, leftM, M.height, M.x + M.width/2, M.height/2, M.z - M.depth/2 + leftM/2, -Math.PI/2, wallMat);
-  addWall(scene, leftM, M.height, M.x + M.width/2, M.height/2, M.z + M.depth/2 - leftM/2, -Math.PI/2, wallMat);
+  addWall(scene, leftM, M.height, M.x - M.width/2, M.height/2, M.z - M.depth/2 + leftM/2, Math.PI/2, wallMat, colliders);
+  addWall(scene, leftM, M.height, M.x - M.width/2, M.height/2, M.z + M.depth/2 - leftM/2, Math.PI/2, wallMat, colliders);
+  addWall(scene, leftM, M.height, M.x + M.width/2, M.height/2, M.z - M.depth/2 + leftM/2, -Math.PI/2, wallMat, colliders);
+  addWall(scene, leftM, M.height, M.x + M.width/2, M.height/2, M.z + M.depth/2 - leftM/2, -Math.PI/2, wallMat, colliders);
 
   // --- Sala wschodnia ---
   const E = ROOMS.east;
@@ -197,13 +209,13 @@ export function buildGallery(scene) {
   eastCeil.rotation.x = Math.PI / 2; eastCeil.position.set(E.x, E.height, E.z);
   scene.add(eastCeil);
 
-  addWall(scene, E.width, E.height, E.x, E.height/2, E.z - E.depth/2, 0, wallMat);
-  addWall(scene, E.width, E.height, E.x, E.height/2, E.z + E.depth/2, Math.PI, wallMat);
-  addWall(scene, E.depth, E.height, E.x + E.width/2, E.height/2, E.z, -Math.PI/2, wallMat);
+  addWall(scene, E.width, E.height, E.x, E.height/2, E.z - E.depth/2, 0, wallMat, colliders);
+  addWall(scene, E.width, E.height, E.x, E.height/2, E.z + E.depth/2, Math.PI, wallMat, colliders);
+  addWall(scene, E.depth, E.height, E.x + E.width/2, E.height/2, E.z, -Math.PI/2, wallMat, colliders);
 
   const leftE = (E.depth - DOOR_W) / 2;
-  addWall(scene, leftE, E.height, E.x - E.width/2, E.height/2, E.z - E.depth/2 + leftE/2, Math.PI/2, wallMat);
-  addWall(scene, leftE, E.height, E.x - E.width/2, E.height/2, E.z + E.depth/2 - leftE/2, Math.PI/2, wallMat);
+  addWall(scene, leftE, E.height, E.x - E.width/2, E.height/2, E.z - E.depth/2 + leftE/2, Math.PI/2, wallMat, colliders);
+  addWall(scene, leftE, E.height, E.x - E.width/2, E.height/2, E.z + E.depth/2 - leftE/2, Math.PI/2, wallMat, colliders);
 
   // --- Sala zachodnia ---
   const W = ROOMS.west;
@@ -215,17 +227,15 @@ export function buildGallery(scene) {
   westCeil.rotation.x = Math.PI / 2; westCeil.position.set(W.x, W.height, W.z);
   scene.add(westCeil);
 
-  addWall(scene, W.width, W.height, W.x, W.height/2, W.z - W.depth/2, 0, wallMat);
-  addWall(scene, W.width, W.height, W.x, W.height/2, W.z + W.depth/2, Math.PI, wallMat);
-  addWall(scene, W.depth, W.height, W.x - W.width/2, W.height/2, W.z, Math.PI/2, wallMat);
+  addWall(scene, W.width, W.height, W.x, W.height/2, W.z - W.depth/2, 0, wallMat, colliders);
+  addWall(scene, W.width, W.height, W.x, W.height/2, W.z + W.depth/2, Math.PI, wallMat, colliders);
+  addWall(scene, W.depth, W.height, W.x - W.width/2, W.height/2, W.z, Math.PI/2, wallMat, colliders);
 
   const leftW = (W.depth - DOOR_W) / 2;
-  addWall(scene, leftW, W.height, W.x + W.width/2, W.height/2, W.z - W.depth/2 + leftW/2, -Math.PI/2, wallMat);
-  addWall(scene, leftW, W.height, W.x + W.width/2, W.height/2, W.z + W.depth/2 - leftW/2, -Math.PI/2, wallMat);
+  addWall(scene, leftW, W.height, W.x + W.width/2, W.height/2, W.z - W.depth/2 + leftW/2, -Math.PI/2, wallMat, colliders);
+  addWall(scene, leftW, W.height, W.x + W.width/2, W.height/2, W.z + W.depth/2 - leftW/2, -Math.PI/2, wallMat, colliders);
 
   /* --- MEBLE --- */
-
-  // Główna
   const sofa = createBubbleSofa();
   sofa.position.set(0, 0, 2); sofa.rotation.y = Math.PI;
   scene.add(sofa);
@@ -243,7 +253,6 @@ export function buildGallery(scene) {
   lamp1.position.set(0, M.height - 0.5, 0);
   scene.add(lamp1);
 
-  // Wschodnia
   scene.add(createRug(5, 3.5, 0xd4c4a8)).position.set(E.x, 0, E.z);
 
   const chair2 = createBubbleChair(); chair2.position.set(E.x + 2, 0, E.z); chair2.rotation.y = -Math.PI/2; scene.add(chair2);
@@ -253,7 +262,6 @@ export function buildGallery(scene) {
 
   const win1 = createRoundWindow(); win1.position.set(E.x + E.width/2 - 0.1, 2.5, E.z); win1.rotation.y = Math.PI/2; scene.add(win1);
 
-  // Zachodnia
   scene.add(createRug(4, 4, 0xbfb5a4)).position.set(W.x, 0, W.z);
 
   const bench2 = createGreenBench(); bench2.position.set(W.x, 0, W.z + 2); bench2.rotation.y = Math.PI; scene.add(bench2);
@@ -274,11 +282,10 @@ export function buildGallery(scene) {
     scene.add(s); scene.add(s.target);
   }
 
-  return { floors, rooms: ROOMS };
+  return { floors, colliders, rooms: ROOMS };
 }
 
 /* ========== SLOTY NA OBRAZY ========== */
-
 export function generateWallSlots() {
   const slots = [];
   const eyeY = 1.6, margin = 0.06;
@@ -304,24 +311,19 @@ export function generateWallSlots() {
     }
   };
 
-  // Główna: północ / południe (po 5)
   addSlots(ROOMS.main, 5, ROOMS.main.width/5, 'x', -1);
   addSlots(ROOMS.main, 5, ROOMS.main.width/5, 'x', 1);
 
-  // Wschodnia: północ / południe (po 3), wschód (po 2)
   addSlots(ROOMS.east, 3, ROOMS.east.width/3, 'x', -1);
   addSlots(ROOMS.east, 3, ROOMS.east.width/3, 'x', 1);
   addSlots(ROOMS.east, 2, ROOMS.east.depth/2, 'z', 1);
 
-  // Zachodnia: północ / południe (po 2), zachód (po 2)
   addSlots(ROOMS.west, 2, ROOMS.west.width/2, 'x', -1);
   addSlots(ROOMS.west, 2, ROOMS.west.width/2, 'x', 1);
   addSlots(ROOMS.west, 2, ROOMS.west.depth/2, 'z', -1);
 
   return slots;
 }
-
-/* ========== PUNKTY SPAWN / TRIGGERY ========== */
 
 export const SPAWN_POINTS = {
   main: new THREE.Vector3(0, 0, 4),
