@@ -1,110 +1,129 @@
 import * as THREE from 'three';
 
-const keys = {};
-window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
-window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-
-// Granice całej galerii (3 sale połączone)
-const BOUNDS = { minX: -28, maxX: 30, minZ: -10, maxZ: 10 };
-
 export class GalleryControls {
   constructor(camera, domElement, scene) {
     this.camera = camera;
-    this.dom = domElement;
+    this.domElement = domElement;
     this.scene = scene;
-    this.mode = 'fpp';
+
+    this.mode = 'fpp'; // 'fpp' lub 'tpp'
+    this.player = new THREE.Vector3(0, 1.6, 5); // Pozycja startowa gracza
+    this.velocity = new THREE.Vector3();
+    
     this.yaw = 0;
     this.pitch = 0;
-    this.player = new THREE.Vector3(0, 0, 4);
-    this.velocity = new THREE.Vector3();
-    this.eyeHeight = 1.65;
-    this.locked = false;
-    this._buildAvatar();
-    this._bindPointerLock();
-  }
 
-  _buildAvatar() {
-    const g = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3a6ea5, roughness: 0.6 });
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xe8c39e, roughness: 0.7 });
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.9, 4, 8), bodyMat);
-    body.position.y = 0.75; g.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), headMat);
-    head.position.y = 1.45; g.add(head);
-    g.visible = false;
-    this.scene.add(g);
-    this.avatar = g;
-  }
+    this.keys = { forward: false, backward: false, left: false, right: false, shift: false };
+    
+    this.raycaster = new THREE.Raycaster();
+    this.collidables = []; // Zostanie uzupełnione obiektami ze sceny
 
-  _bindPointerLock() {
-    this.dom.addEventListener('click', () => {
-      if (!this.locked) this.dom.requestPointerLock();
-    });
-    document.addEventListener('pointerlockchange', () => {
-      this.locked = document.pointerLockElement === this.dom;
-    });
-    document.addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
-      this.yaw -= e.movementX * 0.0022;
-      this.pitch -= e.movementY * 0.0022;
-      this.pitch = Math.max(-1.3, Math.min(1.3, this.pitch));
-    });
+    this.initEvents();
   }
 
   setMode(mode) {
     this.mode = mode;
-    this.avatar.visible = mode === 'tpp';
   }
 
   toggleMode() {
-    this.setMode(this.mode === 'fpp' ? 'tpp' : 'fpp');
+    this.mode = this.mode === 'fpp' ? 'tpp' : 'fpp';
+  }
+
+  initEvents() {
+    window.addEventListener('keydown', (e) => this.onKey(e, true));
+    window.addEventListener('keyup', (e) => this.onKey(e, false));
+    
+    document.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement === this.domElement) {
+        this.yaw -= e.movementX * 0.002;
+        this.pitch -= e.movementY * 0.002;
+        this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+      }
+    });
+  }
+
+  onKey(e, pressed) {
+    switch (e.code) {
+      case 'KeyW': case 'ArrowUp': this.keys.forward = pressed; break;
+      case 'KeyS': case 'ArrowDown': this.keys.backward = pressed; break;
+      case 'KeyA': case 'ArrowLeft': this.keys.left = pressed; break;
+      case 'KeyD': case 'ArrowRight': this.keys.right = pressed; break;
+      case 'ShiftLeft': case 'ShiftRight': this.keys.shift = pressed; break;
+    }
+  }
+
+  // Wyszukaj ściany i meble w scenie do kolizji
+  updateCollidables() {
+    this.collidables = [];
+    this.scene.traverse((child) => {
+      if (child.isMesh && child.name !== 'floor' && !child.userData?.isFloor) {
+        this.collidables.push(child);
+      }
+    });
+  }
+
+  checkCollision(targetPos) {
+    if (this.collidables.length === 0) this.updateCollidables();
+
+    const directions = [
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(-1, 0, 0),
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, -1)
+    ];
+
+    const playerRadius = 0.5; // Zasięg kolizji wokół gracza
+
+    for (const dir of directions) {
+      this.raycaster.set(new THREE.Vector3(targetPos.x, 1.0, targetPos.z), dir);
+      const hits = this.raycaster.intersectObjects(this.collidables, true);
+      if (hits.length > 0 && hits[0].distance < playerRadius) {
+        return true; // Wykryto kolizję
+      }
+    }
+    return false;
   }
 
   update(dt) {
-    const dir = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const speed = (this.keys.shift ? 6.0 : 3.0) * dt;
+    
+    // NAPRAWIONE STEROWANIE LEWO / PRAWO ORAZ PRZÓD / TYŁ:
+    const moveZ = Number(this.keys.backward) - Number(this.keys.forward);
+    // Poprawiona oś X: A idzie w lewo (-1), D idzie w prawo (+1)
+    const moveX = Number(this.keys.right) - Number(this.keys.left);
 
-    let fwd = 0, strafe = 0;
-    if (keys['w'] || keys['arrowup']) fwd += 1;
-    if (keys['s'] || keys['arrowdown']) fwd -= 1;
-    if (keys['a'] || keys['arrowleft']) strafe -= 1;
-    if (keys['d'] || keys['arrowright']) strafe += 1;
+    const inputDir = new THREE.Vector3(moveX, 0, moveZ);
+    
+    if (inputDir.lengthSq() > 0) {
+      inputDir.normalize();
+      
+      // Obrót wektora ruchu zgodnie z kątem patrzenia (yaw)
+      const moveVector = inputDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+      moveVector.multiplyScalar(speed);
 
-    const speed = (keys['shift'] ? 4.2 : 2.4);
-    if (fwd !== 0 || strafe !== 0) {
-      const move = new THREE.Vector3()
-        .addScaledVector(dir, fwd)
-        .addScaledVector(right, strafe)
-        .normalize()
-        .multiplyScalar(speed * dt);
-      this.player.add(move);
+      // Obliczenie propozycji nowej pozycji
+      const targetPos = this.player.clone().add(moveVector);
 
-      const margin = 0.6;
-      this.player.x = Math.max(BOUNDS.minX + margin, Math.min(BOUNDS.maxX - margin, this.player.x));
-      this.player.z = Math.max(BOUNDS.minZ + margin, Math.min(BOUNDS.maxZ - margin, this.player.z));
-
-      if (this.mode === 'tpp') {
-        const targetYaw = Math.atan2(move.x, move.z);
-        let diff = targetYaw - this.avatar.rotation.y;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        this.avatar.rotation.y += diff * Math.min(dt * 10, 1);
+      // Blokowanie przechodzenia przez ściany
+      if (!this.checkCollision(targetPos)) {
+        this.player.copy(targetPos);
       }
     }
 
-    this.avatar.position.set(this.player.x, 0, this.player.z);
+    // Ustawienie wysokości wzroku gracza
+    this.player.y = 1.6;
+
+    // AKTUALIZACJA KAMERY W ZALEŻNOŚCI OD TRYBU (FPP / TPP)
+    const euler = new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ');
+    this.camera.quaternion.setFromEuler(euler);
 
     if (this.mode === 'fpp') {
-      this.camera.position.set(this.player.x, this.eyeHeight, this.player.z);
-      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
-      this.camera.quaternion.copy(q);
+      // Pierwsza osoba: kamera dokładnie w pozycji gracza
+      this.camera.position.copy(this.player);
     } else {
-      const dist = 4.2;
-      const cx = this.player.x - Math.sin(this.yaw) * Math.cos(this.pitch) * dist;
-      const cz = this.player.z - Math.cos(this.yaw) * Math.cos(this.pitch) * dist;
-      const cy = 1.2 + Math.sin(this.pitch) * dist + 1.4;
-      this.camera.position.lerp(new THREE.Vector3(cx, cy, cz), dt * 6);
-      this.camera.lookAt(this.player.x, 1.4, this.player.z);
+      // Trzecia osoba: kamera oddalona za graczem
+      const offset = new THREE.Vector3(0, 0.8, 2.5).applyEuler(euler);
+      this.camera.position.copy(this.player).add(offset);
     }
   }
 }
