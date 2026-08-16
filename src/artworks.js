@@ -60,7 +60,7 @@ function buildFrame(group, texture, maxWidth, aspect) {
 
   const imgMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7 });
   const img = new THREE.Mesh(new THREE.PlaneGeometry(w, h), imgMat);
-  img.position.z = 0.005;
+  img.position.z = 0.04;
   group.add(img);
 
   const light = new THREE.PointLight(0xfff5e6, 8, 3, 2);
