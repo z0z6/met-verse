@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { generateWallSlots } from './room.js';
 
 const loader = new THREE.TextureLoader();
-const MAX_H = 2.0;
-const FRAME_PAD = 0.08;
+const MAX_H = 2.0; // maksymalna wysokość obrazu (m)
+const FRAME_PAD = 0.08; // szerokość ramy
 
 function makeCaptionTexture(title, author) {
   const canvas = document.createElement('canvas');
@@ -60,10 +60,10 @@ function buildFrame(group, texture, maxWidth, aspect) {
 
   const imgMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7 });
   const img = new THREE.Mesh(new THREE.PlaneGeometry(w, h), imgMat);
-  img.position.z = 0.04;
-  img.renderOrder = 1;
+  img.position.z = 0.005;
   group.add(img);
 
+  // Delikatny spot punktowy na obraz
   const light = new THREE.PointLight(0xfff5e6, 8, 3, 2);
   light.position.set(0, h / 2 + 0.5, 0.6);
   group.add(light);
@@ -81,7 +81,7 @@ export async function loadArtworks(scene) {
     console.warn('[Artworks] Nie znaleziono artworks.json — sala będzie pusta (placeholdery).', e);
   }
 
-  const interactive = [];
+  const interactive = []; // meshe, na które można "spojrzeć" żeby zobaczyć podpis
 
   slots.forEach((slot, i) => {
     const group = new THREE.Group();
