@@ -20,6 +20,16 @@ canvas { display:block; }
 .mode-btn:hover { background:#2a2a33; border-color:#777; }
 .hint { font-size:.8rem; color:#777; }
 
+/* VRButton (Three.js) wstawiony do panelu startowego — nadpisujemy jego domyślne
+   style inline (position:absolute na dole ekranu), żeby wyglądał jak nasze przyciski */
+#vr-btn {
+  position:static !important; width:auto !important; margin:0 !important;
+  padding:14px 20px !important; font-size:1rem !important; border-radius:10px !important;
+  border:1px solid #444 !important; background:#1c1c22 !important; color:#eee !important;
+  cursor:pointer !important; opacity:1 !important;
+}
+#vr-btn:hover { background:#2a2a33 !important; }
+
 #hud { position:fixed; inset:0; z-index:10; pointer-events:none; }
 .hud-btn {
   position:fixed; top:16px; right:16px; pointer-events:auto;
@@ -28,8 +38,6 @@ canvas { display:block; }
   backdrop-filter:blur(6px);
 }
 .hud-btn:hover { background:rgba(40,40,46,.85); }
-
-#vr-toggle { right: 140px; }
 
 #crosshair {
   position:fixed; top:50%; left:50%; width:6px; height:6px;

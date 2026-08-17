@@ -1,7 +1,6 @@
 [
-  { "file": "images/1.jpeg", "title": "h3r3sy", "author": "z0z6" },
-  { "file": "images/2.png", "title": "cyfronautaa", "author": "z0z6" },
-  { "file": "images/3.jpg", "title": "on monky globe", "author": "z0z6" },
-  { "file": "images/4.png", "title": "ciphrosis", "author": "z0z6" },
-  { "file": "images/6.jpg", "title": "super", "author": "z0z6" } 
+  { "file": "images/demo1.jpg", "title": "Kompozycja I", "author": "Grafika demo" },
+  { "file": "images/demo2.jpg", "title": "Kompozycja II", "author": "Grafika demo" },
+  { "file": "images/demo3.jpg", "title": "Kompozycja III", "author": "Grafika demo" },
+  { "file": "images/demo4.jpg", "title": "Kompozycja IV", "author": "Grafika demo" }
 ]
