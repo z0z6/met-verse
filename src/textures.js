@@ -30,3 +30,9 @@ export function loadCeilingMaterial(repeatX, repeatY) {
   map.repeat.set(repeatX, repeatY);
   return new THREE.MeshStandardMaterial({ map, roughness: 1.0 });
 }
+
+export function loadRugMaterial(repeatX, repeatY) {
+  const map = load('textures/rug_color.jpg', THREE.SRGBColorSpace);
+  map.repeat.set(repeatX, repeatY);
+  return new THREE.MeshStandardMaterial({ map, roughness: 1.0 });
+}

@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { buildRoom } from './room.js';
 import { loadArtworks } from './artworks.js';
+import { buildLoungeSet } from './furniture.js';
+import { ROOMS, OBSTACLES, resolveCollision } from './collision.js';
 import { GalleryControls } from './controls.js';
-import { resolveCollision } from './collision.js';
+import { CardboardMode } from './cardboard.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111114);
@@ -25,6 +27,10 @@ scene.add(rig);
 rig.add(camera);
 
 const { floorMesh } = buildRoom(scene);
+const mainRoom = ROOMS[1];
+const loungeX = (mainRoom.minX + mainRoom.maxX) / 2;
+buildLoungeSet(scene, loungeX, 0);
+OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
 let interactiveArtworks = [];
 loadArtworks(scene).then(list => { interactiveArtworks = list; });
 
@@ -35,6 +41,9 @@ const raycaster = new THREE.Raycaster();
 let inXR = false;
 let dwell = 0;
 const TELEPORT_DWELL = 1.5;
+
+const cardboard = new CardboardMode(renderer, camera);
+let inCardboard = false;
 
 // --- Przycisk VR: wbudowujemy natywny VRButton (rozpoznaje wsparcie WebXR)
 // w ekran startowy, zamiast pozwalać mu doczepiać się automatycznie do body.
@@ -111,11 +120,15 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inXR) {
     updateGazeTeleport(dt);
+    renderer.render(scene, camera);
+  } else if (inCardboard) {
+    updateGazeTeleport(dt);
+    cardboard.render(scene);
   } else {
     controls.update(dt);
     updateCaption();
+    renderer.render(scene, camera);
   }
-  renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
 
@@ -135,3 +148,26 @@ function startExperience(mode) {
 document.getElementById('start-fpp').addEventListener('click', () => startExperience('fpp'));
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
 document.getElementById('toggle-mode').addEventListener('click', () => controls.toggleMode());
+
+document.getElementById('start-cardboard').addEventListener('click', async () => {
+  rig.position.set(controls.player.x, 0, controls.player.z);
+  camera.position.set(0, 0, 0);
+  await cardboard.enable();
+  inCardboard = true;
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('reticle-ring').style.display = 'block';
+  document.getElementById('exit-cardboard').classList.remove('hidden');
+});
+
+document.getElementById('exit-cardboard').addEventListener('click', () => {
+  cardboard.disable();
+  inCardboard = false;
+  controls.player.set(rig.position.x, 0, rig.position.z);
+  rig.position.set(0, 0, 0);
+  camera.rotation.set(0, 0, 0);
+  document.getElementById('reticle-ring').style.display = 'none';
+  document.getElementById('exit-cardboard').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('intro').classList.remove('hidden');
+});

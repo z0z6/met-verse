@@ -52,15 +52,20 @@ function buildFrame(group, texture, maxWidth, aspect) {
   let h = w / aspect;
   if (h > MAX_H) { h = MAX_H; w = h * aspect; }
 
-  const frameGeo = new THREE.BoxGeometry(w + FRAME_PAD * 2, h + FRAME_PAD * 2, 0.05);
+  const FRAME_DEPTH = 0.05;
+  const FRAME_BACK_Z = -0.02; // środek ramy — cofnięty względem grupy (odsuniętej już od ściany)
+  const FRAME_FRONT_Z = FRAME_BACK_Z + FRAME_DEPTH / 2; // przednia powierzchnia ramy
+  const IMG_Z = FRAME_FRONT_Z + 0.01; // obraz WYRAŹNIE przed ramą — bez tego migotały (z-fighting)
+
+  const frameGeo = new THREE.BoxGeometry(w + FRAME_PAD * 2, h + FRAME_PAD * 2, FRAME_DEPTH);
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x181613, roughness: 0.4, metalness: 0.2 });
   const frame = new THREE.Mesh(frameGeo, frameMat);
-  frame.position.z = -0.02;
+  frame.position.z = FRAME_BACK_Z;
   group.add(frame);
 
   const imgMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7 });
   const img = new THREE.Mesh(new THREE.PlaneGeometry(w, h), imgMat);
-  img.position.z = 0.005;
+  img.position.z = IMG_Z;
   group.add(img);
 
   // Delikatny spot punktowy na obraz

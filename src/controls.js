@@ -65,7 +65,9 @@ export class GalleryControls {
   }
 
   update(dt) {
-    const dir = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    // Kierunek "przód" = tam, gdzie faktycznie patrzy kamera (domyślnie -Z w three.js).
+    // Poprzednio wektor miał odwrócony znak, przez co W/S i kamera TPP działały na odwrót.
+    const dir = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
 
     let fwd = 0, strafe = 0;
@@ -101,8 +103,8 @@ export class GalleryControls {
       this.camera.quaternion.copy(q);
     } else {
       const dist = 4.2;
-      const cx = this.player.x - Math.sin(this.yaw) * Math.cos(this.pitch) * dist;
-      const cz = this.player.z - Math.cos(this.yaw) * Math.cos(this.pitch) * dist;
+      const cx = this.player.x + Math.sin(this.yaw) * Math.cos(this.pitch) * dist;
+      const cz = this.player.z + Math.cos(this.yaw) * Math.cos(this.pitch) * dist;
       const cy = 1.2 + Math.sin(this.pitch) * dist + 1.4;
       this.camera.position.lerp(new THREE.Vector3(cx, cy, cz), dt * 6);
       this.camera.lookAt(this.player.x, 1.4, this.player.z);

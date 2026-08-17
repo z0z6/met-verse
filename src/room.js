@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ROOMS, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, BOUNDS } from './collision.js';
-import { loadFloorMaterial, loadWallMaterial, loadCeilingMaterial } from './textures.js';
+import { loadFloorMaterial, loadWallMaterial, loadCeilingMaterial, loadRugMaterial } from './textures.js';
 
 export const ROOM_NAMES = ['Sala zachodnia', 'Sala główna', 'Sala wschodnia'];
 const ROOM_TINTS = [0xfff0e0, 0xffffff, 0xe6f0ff]; // ciepły / neutralny / chłodny akcent światła
@@ -64,27 +64,34 @@ export function buildRoom(scene) {
   }
 
   // Oświetlenie
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2a30, 0.35));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x3a3a42, 0.55));
 
   ROOMS.forEach((room, i) => {
     const cx = (room.minX + room.maxX) / 2;
-    const spot = new THREE.SpotLight(ROOM_TINTS[i], 55, 13, Math.PI / 4.5, 0.4, 1.5);
+    const spot = new THREE.SpotLight(ROOM_TINTS[i], 85, 16, Math.PI / 4, 0.45, 1.4);
     spot.position.set(cx, H - 0.1, 0);
     spot.target.position.set(cx, 0, 0);
     scene.add(spot, spot.target);
+
+    // dodatkowe boczne punkty światła — łagodzą ostre cienie, doświetlają ściany
+    for (const zOff of [-DEPTH / 3.2, DEPTH / 3.2]) {
+      const fill = new THREE.PointLight(0xfff6ea, 12, 9, 2);
+      fill.position.set(cx, H - 1.2, zOff);
+      scene.add(fill);
+    }
   });
 
-  // Dywan na środku sali głównej — odsunięty nieznacznie ponad podłogę,
-  // żeby uniknąć migotania (z-fighting) dwóch nakładających się powierzchni.
-  const mainRoom = ROOMS[1];
-  const rugMat = new THREE.MeshStandardMaterial({ color: 0x5c2a2a, roughness: 0.95 });
-  const rugW = (mainRoom.maxX - mainRoom.minX) * 0.5;
-  const rugD = DEPTH * 0.45;
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(rugW, rugD), rugMat);
-  rug.rotation.x = -Math.PI / 2;
-  rug.position.set((mainRoom.minX + mainRoom.maxX) / 2, 0.02, 0);
-  scene.add(rug);
+  // Dywan na środku każdej z sal — proporcjonalny do jej powierzchni,
+  // odsunięty nieznacznie ponad podłogę (unika migotania z podłogą).
+  const rugMat = loadRugMaterial(4, 3);
+  ROOMS.forEach((room) => {
+    const w = room.maxX - room.minX;
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.5, DEPTH * 0.45), rugMat.clone());
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set((room.minX + room.maxX) / 2, 0.02, 0);
+    scene.add(rug);
+  });
 
   return { floorMesh: floor };
 }
@@ -92,7 +99,7 @@ export function buildRoom(scene) {
 // Generuje sloty na obrazy: dla każdej z trzech sal — jej odcinek ściany
 // północnej i południowej, a skrajne sale dodatkowo swoją ścianę szczytową.
 export function generateWallSlots() {
-  const margin = 0.06;
+  const margin = 0.1;
   const eyeY = 1.6;
   const slotsPerWall = 3;
   const slots = [];

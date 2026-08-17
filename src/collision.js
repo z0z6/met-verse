@@ -28,6 +28,8 @@ export const BOUNDS = {
 // Ściany działowe (na granicach sal) z przejściem na środku
 export const PARTITIONS = ROOMS.slice(0, -1).map((room) => room.maxX);
 
+export const OBSTACLES = []; // { x, z, radius } — wypełniane przy budowie mebli
+
 export function resolveCollision(pos, radius = 0.5) {
   const margin = 0.5;
   pos.x = Math.max(BOUNDS.minX + margin, Math.min(BOUNDS.maxX - margin, pos.x));
@@ -38,6 +40,17 @@ export function resolveCollision(pos, radius = 0.5) {
     if (inDoorway) continue;
     if (Math.abs(pos.x - px) < radius) {
       pos.x = px + Math.sign(pos.x - px || 1) * radius;
+    }
+  }
+
+  for (const obs of OBSTACLES) {
+    const dx = pos.x - obs.x, dz = pos.z - obs.z;
+    const dist = Math.hypot(dx, dz);
+    const minDist = obs.radius + radius;
+    if (dist < minDist && dist > 0.0001) {
+      const push = minDist / dist;
+      pos.x = obs.x + dx * push;
+      pos.z = obs.z + dz * push;
     }
   }
   return pos;
