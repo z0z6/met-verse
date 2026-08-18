@@ -141,13 +141,16 @@ export function buildCornerSofa(scene, x, z, armA = 2.6, armB = 2.0, rotY = 0) {
   backB.position.set(backT / 2, seatH + (backH - seatH) / 2, D + (armB - D) / 2);
   group.add(backB);
 
-  // Podłokietniki na dwóch otwartych końcach
-  const armEndA = rbox(armW, 0.6, D, FABRIC_ACCENT, 0.045);
-  armEndA.position.set(armA - armW / 2, 0.3, D / 2);
+  // Podłokietniki na dwóch otwartych końcach — celowo odrobinę większe niż
+  // siedzisko pod spodem, żeby żadna ich powierzchnia nie pokrywała się
+  // DOKŁADNIE z krawędzią siedziska (to właśnie powodowało migotanie).
+  const EPS = 0.02;
+  const armEndA = rbox(armW, 0.6, D + EPS * 2, FABRIC_ACCENT, 0.045);
+  armEndA.position.set(armA - armW / 2 + EPS, 0.3, D / 2);
   group.add(armEndA);
 
-  const armEndB = rbox(D, 0.6, armW, FABRIC_ACCENT, 0.045);
-  armEndB.position.set(D / 2, 0.3, armB - armW / 2);
+  const armEndB = rbox(D + EPS * 2, 0.6, armW, FABRIC_ACCENT, 0.045);
+  armEndB.position.set(D / 2, 0.3, armB - armW / 2 + EPS);
   group.add(armEndB);
 
   // Poduchy oparcia — subtelne, przy obu plecach
@@ -169,6 +172,11 @@ export function buildCornerSofa(scene, x, z, armA = 2.6, armB = 2.0, rotY = 0) {
     leg.position.set(fx, 0.05, fz);
     group.add(leg);
   }
+
+  // Stolik kawowy od strony wewnętrznej (otwartej) krawędzi kanapy — na wprost obu skrzydeł
+  const table = buildCoffeeTable();
+  table.position.set(D + 1.3, 0, D + 1.3);
+  group.add(table);
 
   scene.add(group);
   return { group, footprint: { armA, armB, depth: D } };
