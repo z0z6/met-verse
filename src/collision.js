@@ -5,6 +5,7 @@
 export const DEPTH = 16;
 export const ROOM_WIDTHS = [16, 16, 16]; // zachodnia / główna / wschodnia
 export const DOOR_HALF_WIDTH = 1.6; // połowa szerokości przejścia między salami
+export const WALL_THICKNESS = 0.55; // grubość ścian działowych — proporcjonalna do 16 m sali
 
 const totalWidth = ROOM_WIDTHS.reduce((a, b) => a + b, 0);
 
@@ -38,8 +39,9 @@ export function resolveCollision(pos, radius = 0.5) {
   for (const px of PARTITIONS) {
     const inDoorway = Math.abs(pos.z) < DOOR_HALF_WIDTH - radius;
     if (inDoorway) continue;
-    if (Math.abs(pos.x - px) < radius) {
-      pos.x = px + Math.sign(pos.x - px || 1) * radius;
+    const halfWall = WALL_THICKNESS / 2;
+    if (Math.abs(pos.x - px) < halfWall + radius) {
+      pos.x = px + Math.sign(pos.x - px || 1) * (halfWall + radius);
     }
   }
 

@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { buildRoom } from './room.js';
 import { loadArtworks } from './artworks.js';
-import { buildLoungeSet } from './furniture.js';
-import { ROOMS, OBSTACLES, resolveCollision } from './collision.js';
+import { buildLoungeSet, buildSingleChairSet, buildPottedPlant } from './furniture.js';
+import { ROOMS, OBSTACLES, resolveCollision, DEPTH } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 
@@ -31,6 +31,17 @@ const mainRoom = ROOMS[1];
 const loungeX = (mainRoom.minX + mainRoom.maxX) / 2;
 buildLoungeSet(scene, loungeX, 0);
 OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
+
+// Donica z dracena — z tyłu sofy, po prawej stronie (patrząc od stolika w stronę sofy)
+buildPottedPlant(scene, loungeX + 1.55, -1.75);
+OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
+
+// Fotel + mały stolik w sali zachodniej — ustawiony pod ścianą północną, twarzą w głąb sali
+const westRoom = ROOMS[0];
+const westX = (westRoom.minX + westRoom.maxX) / 2;
+const westZ = -DEPTH / 2 + 1.6;
+buildSingleChairSet(scene, westX, westZ, 0);
+OBSTACLES.push({ x: westX + 0.4, z: westZ, radius: 1.1 });
 let interactiveArtworks = [];
 loadArtworks(scene).then(list => { interactiveArtworks = list; });
 

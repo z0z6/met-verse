@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROOMS, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, BOUNDS } from './collision.js';
+import { ROOMS, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS, BOUNDS } from './collision.js';
 import { loadFloorMaterial, loadWallMaterial, loadCeilingMaterial, loadRugMaterial } from './textures.js';
 
 export const ROOM_NAMES = ['Sala zachodnia', 'Sala główna', 'Sala wschodnia'];
@@ -46,20 +46,22 @@ export function buildRoom(scene) {
   eastWall.rotation.y = -Math.PI / 2;
   scene.add(eastWall);
 
-  // Ściany działowe z przejściem (drzwiami) na środku
+  // Ściany działowe — bryły z realną grubością (nie płaszczyzny), z przejściem
+  // (drzwiami) na środku. Grubość proporcjonalna do wymiarów sal.
   for (const px of PARTITIONS) {
     const segLen = (DEPTH - DOOR_HALF_WIDTH * 2) / 2;
     for (const side of [-1, 1]) {
-      const segMat = wallMatSide.clone();
-      const seg = new THREE.Mesh(new THREE.PlaneGeometry(segLen, H), segMat);
       const zCenter = side * (DOOR_HALF_WIDTH + segLen / 2);
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(WALL_THICKNESS, H, segLen), wallMatSide.clone());
       seg.position.set(px, H / 2, zCenter);
-      seg.rotation.y = Math.PI / 2;
       scene.add(seg);
-      // druga strona (widoczna z sąsiedniej sali)
-      const segBack = seg.clone();
-      segBack.rotation.y = -Math.PI / 2;
-      scene.add(segBack);
+    }
+    // odrzwia — wąskie pionowe słupki po bokach przejścia, żeby otwór wyglądał wykończony
+    const jambGeo = new THREE.BoxGeometry(WALL_THICKNESS * 1.08, H, 0.08);
+    for (const side of [-1, 1]) {
+      const jamb = new THREE.Mesh(jambGeo, wallMatSide.clone());
+      jamb.position.set(px, H / 2, side * DOOR_HALF_WIDTH);
+      scene.add(jamb);
     }
   }
 
