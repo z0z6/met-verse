@@ -1,11 +1,6 @@
 [
-  { "file": "images/1.jpg", "title": "dreamer", "author": "z0z6" },
-  { "file": "images/2.jpg", "title": "epic", "author": "z0z6" },
-  { "file": "images/3.jpeg", "title": "affirmation", "author": "z0z6" },
-  { "file": "images/4.jpeg", "title": "Super!", "author": "z0z6" },
-  { "file": "images/5.jpg", "title": "on the monkey globe", "author": "z0z6" },
-  { "file": "images/6.jpeg", "title": "Death", "author": "z0z6" },
-  { "file": "images/7.png", "title": "cyfronauta", "author": "z0z6" },
-  { "file": "images/8.png", "title": "h3r3sy", "author": "z0z6" },
-  { "file": "images/9.png", "title": "uciążliwe troski", "author": "z0z6" }
+  { "file": "images/demo1.jpg", "title": "Kompozycja I", "author": "Grafika demo" },
+  { "file": "images/demo2.jpg", "title": "Kompozycja II", "author": "Grafika demo" },
+  { "file": "images/demo3.jpg", "title": "Kompozycja III", "author": "Grafika demo" },
+  { "file": "images/demo4.jpg", "title": "Kompozycja IV", "author": "Grafika demo" }
 ]
