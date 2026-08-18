@@ -1,6 +1,11 @@
 [
-  { "file": "images/demo1.jpg", "title": "Kompozycja I", "author": "Grafika demo" },
-  { "file": "images/demo2.jpg", "title": "Kompozycja II", "author": "Grafika demo" },
-  { "file": "images/demo3.jpg", "title": "Kompozycja III", "author": "Grafika demo" },
-  { "file": "images/demo4.jpg", "title": "Kompozycja IV", "author": "Grafika demo" }
+  { "file": "images/1.jpg", "title": "Kompozycja I", "author": "z0z6" },
+  { "file": "images/2.jpg", "title": "Kompozycja II", "author": "z0z6" },
+  { "file": "images/3.jpeg", "title": "Kompozycja III", "author": "z0z6" },
+  { "file": "images/4.jpeg", "title": "Kompozycja IV", "author": "z0z6" },
+  { "file": "images/5.jpg", "title": "Kompozycja IV", "author": "z0z6" },
+  { "file": "images/6.jpeg", "title": "Kompozycja IV", "author": "z0z6" },
+  { "file": "images/7.png", "title": "Kompozycja IV", "author": "z0z6" },
+  { "file": "images/8.png", "title": "Kompozycja IV", "author": "z0z6" }
+  { "file": "images/8.png", "title": "Kompozycja IV", "author": "z0z6" },
 ]
