@@ -35,9 +35,9 @@ function buildSeat(w) {
     g.add(arm);
   }
 
-  // Poduchy oparcia (delikatny akcent, lekko odsunięte od pleców — bez styku powierzchni)
-  const cushion = rbox(innerW - 0.1, 0.28, 0.16, FABRIC, 0.06);
-  cushion.position.set(0, backH - 0.05, -depth / 2 + 0.24);
+  // Poduchy oparcia — cieńsze i bliżej pleców, żeby dyskretnie wystawały nad oparcie
+  const cushion = rbox(innerW - 0.1, 0.28, 0.08, FABRIC, 0.05);
+  cushion.position.set(0, backH - 0.05, -depth / 2 + 0.22);
   g.add(cushion);
 
   const legGeo = new THREE.CylinderGeometry(0.03, 0.025, 0.1, 8);
@@ -110,21 +110,68 @@ export function buildLoungeSet(scene, centerX, centerZ = 0) {
   return group;
 }
 
-// Pojedynczy fotel + mały stolik (do mniejszej sali)
-export function buildSingleChairSet(scene, centerX, centerZ = 0, rotY = 0) {
+// Kanapa narożna w kształcie L — złożona z trzech niezachodzących na siebie
+// segmentów (róg + dwa ramiona), żeby uniknąć tego samego migotania co przy
+// prostej sofie. Otwarta w stronę wnętrza pokoju, oparta plecami o dwie ściany.
+export function buildCornerSofa(scene, x, z, armA = 2.6, armB = 2.0, rotY = 0) {
   const group = new THREE.Group();
-  group.position.set(centerX, 0, centerZ);
+  group.position.set(x, 0, z);
   group.rotation.y = rotY;
 
-  const chair = buildSeat(0.9);
-  group.add(chair);
+  const D = 0.85; // głębokość siedziska
+  const seatH = 0.42, backH = 0.85, armW = 0.18, backT = 0.18;
 
-  const table = buildSmallTable();
-  table.position.set(0.85, 0, 0);
-  group.add(table);
+  function seatBox(w, d, cx, cz) {
+    const m = rbox(w, seatH, d, FABRIC, 0.05);
+    m.position.set(cx, seatH / 2, cz);
+    group.add(m);
+  }
+  // Róg + dwa ramiona — stykają się krawędziami, nie zachodzą na siebie
+  seatBox(D, D, D / 2, D / 2);
+  seatBox(armA - D, D, D + (armA - D) / 2, D / 2);
+  seatBox(D, armB - D, D / 2, D + (armB - D) / 2);
+
+  // Oparcie wzdłuż obu "zaplecznych" krawędzi (x=0 i z=0) — jeden ciągły
+  // panel na całej długości ramienia A, drugi tylko na wystającej części ramienia B
+  const backA = rbox(armA, backH - seatH, backT, FABRIC_ACCENT, 0.05);
+  backA.position.set(armA / 2, seatH + (backH - seatH) / 2, backT / 2);
+  group.add(backA);
+
+  const backB = rbox(backT, backH - seatH, armB - D, FABRIC_ACCENT, 0.05);
+  backB.position.set(backT / 2, seatH + (backH - seatH) / 2, D + (armB - D) / 2);
+  group.add(backB);
+
+  // Podłokietniki na dwóch otwartych końcach
+  const armEndA = rbox(armW, 0.6, D, FABRIC_ACCENT, 0.045);
+  armEndA.position.set(armA - armW / 2, 0.3, D / 2);
+  group.add(armEndA);
+
+  const armEndB = rbox(D, 0.6, armW, FABRIC_ACCENT, 0.045);
+  armEndB.position.set(D / 2, 0.3, armB - armW / 2);
+  group.add(armEndB);
+
+  // Poduchy oparcia — subtelne, przy obu plecach
+  const cushA = rbox(armA - 0.3, 0.28, 0.08, FABRIC, 0.05);
+  cushA.position.set(armA / 2, backH - 0.05, backT + 0.05);
+  group.add(cushA);
+  const cushB = rbox(0.08, 0.28, armB - D - 0.2, FABRIC, 0.05);
+  cushB.position.set(backT + 0.05, backH - 0.05, D + (armB - D) / 2);
+  group.add(cushB);
+
+  // Nóżki
+  const legGeo = new THREE.CylinderGeometry(0.032, 0.027, 0.1, 8);
+  const feet = [
+    [0.1, 0.1], [armA - 0.1, 0.1], [armA - 0.1, D - 0.1],
+    [0.1, armB - 0.1], [D - 0.1, armB - 0.1],
+  ];
+  for (const [fx, fz] of feet) {
+    const leg = new THREE.Mesh(legGeo, WOOD);
+    leg.position.set(fx, 0.05, fz);
+    group.add(leg);
+  }
 
   scene.add(group);
-  return group;
+  return { group, footprint: { armA, armB, depth: D } };
 }
 
 // --- Donica z egzotyczną rośliną (dracena) ---

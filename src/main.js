@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { buildRoom } from './room.js';
 import { loadArtworks } from './artworks.js';
-import { buildLoungeSet, buildSingleChairSet, buildPottedPlant } from './furniture.js';
+import { buildLoungeSet, buildCornerSofa, buildPottedPlant } from './furniture.js';
 import { ROOMS, OBSTACLES, resolveCollision, DEPTH } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
@@ -36,12 +36,16 @@ OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
 buildPottedPlant(scene, loungeX + 1.55, -1.75);
 OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
 
-// Fotel + mały stolik w sali zachodniej — ustawiony pod ścianą północną, twarzą w głąb sali
+// Kanapa narożna w sali zachodniej — wpasowana w róg NW pokoju, oparta plecami o ściany
 const westRoom = ROOMS[0];
-const westX = (westRoom.minX + westRoom.maxX) / 2;
-const westZ = -DEPTH / 2 + 1.6;
-buildSingleChairSet(scene, westX, westZ, 0);
-OBSTACLES.push({ x: westX + 0.4, z: westZ, radius: 1.1 });
+const cornerX = westRoom.minX + 0.25;
+const cornerZ = -DEPTH / 2 + 0.25;
+const { footprint } = buildCornerSofa(scene, cornerX, cornerZ, 2.6, 2.0);
+OBSTACLES.push(
+  { x: cornerX + footprint.depth / 2, z: cornerZ + footprint.depth / 2, radius: footprint.depth / 2 + 0.15 },
+  { x: cornerX + footprint.depth + (footprint.armA - footprint.depth) / 2, z: cornerZ + footprint.depth / 2, radius: (footprint.armA - footprint.depth) / 2 + 0.5 },
+  { x: cornerX + footprint.depth / 2, z: cornerZ + footprint.depth + (footprint.armB - footprint.depth) / 2, radius: (footprint.armB - footprint.depth) / 2 + 0.5 }
+);
 let interactiveArtworks = [];
 loadArtworks(scene).then(list => { interactiveArtworks = list; });
 

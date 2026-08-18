@@ -79,11 +79,28 @@ function buildFrame(group, texture, maxWidth, aspect) {
 export async function loadArtworks(scene) {
   const slots = generateWallSlots();
   let manifest = [];
+
   try {
-    const res = await fetch('artworks.json');
-    if (res.ok) manifest = await res.json();
-  } catch (e) {
-    console.warn('[Artworks] Nie znaleziono artworks.json — sala będzie pusta (placeholdery).', e);
+    const res = await fetch('artworks.json', { cache: 'no-store' });
+    if (!res.ok) {
+      console.error(`[Artworks] artworks.json zwróciło status ${res.status} — sprawdź czy plik istnieje w katalogu głównym.`);
+    } else {
+      const text = await res.text();
+      try {
+        manifest = JSON.parse(text);
+        if (!Array.isArray(manifest)) {
+          console.error('[Artworks] artworks.json musi być tablicą [ ... ] — otrzymano:', manifest);
+          manifest = [];
+        } else {
+          console.log(`[Artworks] Wczytano manifest: ${manifest.length} pozycji`, manifest);
+        }
+      } catch (parseErr) {
+        console.error('[Artworks] BŁĄD SKŁADNI w artworks.json — plik nie jest poprawnym JSON-em:', parseErr.message);
+        console.error('[Artworks] Zawartość pliku, którą próbowano wczytać:', text);
+      }
+    }
+  } catch (fetchErr) {
+    console.error('[Artworks] Nie udało się pobrać artworks.json (błąd sieci/ścieżki):', fetchErr);
   }
 
   const interactive = []; // meshe, na które można "spojrzeć" żeby zobaczyć podpis
@@ -99,6 +116,7 @@ export async function loadArtworks(scene) {
       loader.load(
         entry.file,
         (tex) => {
+          console.log(`[Artworks] OK: ${entry.file} (${tex.image.width}x${tex.image.height})`);
           tex.colorSpace = THREE.SRGBColorSpace;
           const aspect = tex.image.width / tex.image.height;
           const h = buildFrame(group, tex, slot.maxWidth, aspect);
