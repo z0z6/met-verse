@@ -3,7 +3,7 @@ import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { buildRoom } from './room.js';
 import { loadArtworks } from './artworks.js';
 import { buildLoungeSet, buildCornerSofa, buildPottedPlant } from './furniture.js';
-import { ROOMS, OBSTACLES, resolveCollision, DEPTH } from './collision.js';
+import { ROOMS, OBSTACLES, resolveCollision } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 
@@ -36,15 +36,18 @@ OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
 buildPottedPlant(scene, loungeX + 1.55, -1.75);
 OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
 
-// Kanapa narożna w sali zachodniej — wpasowana w róg NW pokoju, oparta plecami o ściany
+// Kanapa narożna w sali zachodniej — wyśrodkowana na dywaniku, krawędzie
+// równoległe do krawędzi dywanu, oba skrzydła po 4 m.
 const westRoom = ROOMS[0];
-const cornerX = westRoom.minX + 0.25;
-const cornerZ = -DEPTH / 2 + 0.25;
-const { footprint } = buildCornerSofa(scene, cornerX, cornerZ, 2.6, 2.0);
+const westCenterX = (westRoom.minX + westRoom.maxX) / 2;
+const ARM_A = 4, ARM_B = 4;
+const sofaX = westCenterX - ARM_A / 2;
+const sofaZ = 0 - ARM_B / 2;
+const { footprint } = buildCornerSofa(scene, sofaX, sofaZ, ARM_A, ARM_B);
 OBSTACLES.push(
-  { x: cornerX + footprint.depth / 2, z: cornerZ + footprint.depth / 2, radius: footprint.depth / 2 + 0.15 },
-  { x: cornerX + footprint.depth + (footprint.armA - footprint.depth) / 2, z: cornerZ + footprint.depth / 2, radius: (footprint.armA - footprint.depth) / 2 + 0.5 },
-  { x: cornerX + footprint.depth / 2, z: cornerZ + footprint.depth + (footprint.armB - footprint.depth) / 2, radius: (footprint.armB - footprint.depth) / 2 + 0.5 }
+  { x: sofaX + footprint.depth / 2, z: sofaZ + footprint.depth / 2, radius: footprint.depth / 2 + 0.15 },
+  { x: sofaX + footprint.depth + (footprint.armA - footprint.depth) / 2, z: sofaZ + footprint.depth / 2, radius: (footprint.armA - footprint.depth) / 2 + 0.5 },
+  { x: sofaX + footprint.depth / 2, z: sofaZ + footprint.depth + (footprint.armB - footprint.depth) / 2, radius: (footprint.armB - footprint.depth) / 2 + 0.5 }
 );
 let interactiveArtworks = [];
 loadArtworks(scene).then(list => { interactiveArtworks = list; });
