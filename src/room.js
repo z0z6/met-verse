@@ -5,8 +5,10 @@ import { loadFloorMaterial, loadWallMaterial, loadCeilingMaterial, loadRugMateri
 export const ROOM_NAMES = ['Sala zachodnia', 'Sala główna', 'Sala wschodnia'];
 const ROOM_TINTS = [0xfff0e0, 0xffffff, 0xe6f0ff]; // ciepły / neutralny / chłodny akcent światła
 
+export const ROOM_HEIGHT = 5.5;
+
 export function buildRoom(scene) {
-  const H = 5.5;
+  const H = ROOM_HEIGHT;
   const totalWidth = BOUNDS.maxX - BOUNDS.minX;
 
   const floorMat = loadFloorMaterial(totalWidth / 4, DEPTH / 4);

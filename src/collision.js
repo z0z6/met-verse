@@ -46,13 +46,25 @@ export function resolveCollision(pos, radius = 0.5) {
   }
 
   for (const obs of OBSTACLES) {
-    const dx = pos.x - obs.x, dz = pos.z - obs.z;
-    const dist = Math.hypot(dx, dz);
-    const minDist = obs.radius + radius;
-    if (dist < minDist && dist > 0.0001) {
-      const push = minDist / dist;
-      pos.x = obs.x + dx * push;
-      pos.z = obs.z + dz * push;
+    if (obs.radius !== undefined) {
+      const dx = pos.x - obs.x, dz = pos.z - obs.z;
+      const dist = Math.hypot(dx, dz);
+      const minDist = obs.radius + radius;
+      if (dist < minDist && dist > 0.0001) {
+        const push = minDist / dist;
+        pos.x = obs.x + dx * push;
+        pos.z = obs.z + dz * push;
+      }
+    } else {
+      // prostokątna przeszkoda (np. ławka) — dokładniejsza niż okrąg dla wydłużonych mebli
+      const rx0 = obs.minX - radius, rx1 = obs.maxX + radius;
+      const rz0 = obs.minZ - radius, rz1 = obs.maxZ + radius;
+      if (pos.x > rx0 && pos.x < rx1 && pos.z > rz0 && pos.z < rz1) {
+        const dL = pos.x - rx0, dR = rx1 - pos.x, dT = pos.z - rz0, dB = rz1 - pos.z;
+        const m = Math.min(dL, dR, dT, dB);
+        if (m === dL) pos.x = rx0; else if (m === dR) pos.x = rx1;
+        else if (m === dT) pos.z = rz0; else pos.z = rz1;
+      }
     }
   }
   return pos;

@@ -50,20 +50,21 @@ function buildSeat(w) {
   return g;
 }
 
-function buildCoffeeTable() {
+export function buildCoffeeTable(w = 1.1, d = 0.6) {
   const g = new THREE.Group();
-  const top = rbox(1.1, 0.05, 0.6, WOOD, 0.02);
+  const top = rbox(w, 0.05, d, WOOD, 0.02);
   top.position.y = 0.42;
   g.add(top);
 
-  const glassTop = rbox(1.0, 0.02, 0.5, GLASS, 0.01);
+  const glassTop = rbox(w - 0.1, 0.02, d - 0.1, GLASS, 0.01);
   glassTop.position.y = 0.42 + 0.025 + 0.01; // dokładnie na wierzchu drewnianego blatu, bez zagłębienia
   g.add(glassTop);
 
   const legGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8);
+  const lx = w / 2 - 0.07, lz = d / 2 - 0.08;
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     const leg = new THREE.Mesh(legGeo, WOOD);
-    leg.position.set(sx * 0.48, 0.2, sz * 0.25);
+    leg.position.set(sx * lx, 0.2, sz * lz);
     g.add(leg);
   }
   return g;
@@ -173,13 +174,11 @@ export function buildCornerSofa(scene, x, z, armA = 2.6, armB = 2.0, rotY = 0) {
     group.add(leg);
   }
 
-  // Stolik kawowy od strony wewnętrznej (otwartej) krawędzi kanapy — na wprost obu skrzydeł
-  const table = buildCoffeeTable();
-  table.position.set(D + 1.3, 0, D + 1.3);
-  group.add(table);
+  // Stolik kawowy budowany i pozycjonowany z main.js (potrzebuje obrotu/rozmiaru
+  // dopasowanego do konkretnego skrzydła sofy)
 
   scene.add(group);
-  return { group, footprint: { armA, armB, depth: D } };
+  return { group, footprint: { armA, armB, depth: D, armW } };
 }
 
 // --- Donica z egzotyczną rośliną (dracena) ---
@@ -189,30 +188,34 @@ const TRUNK_MAT = new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: 0
 const LEAF_MAT = new THREE.MeshStandardMaterial({ color: 0x2f6b3a, roughness: 0.7, side: THREE.DoubleSide });
 const LEAF_MAT_LIGHT = new THREE.MeshStandardMaterial({ color: 0x4c8a4f, roughness: 0.7, side: THREE.DoubleSide });
 
-function buildCane(baseY, height, tilt) {
-  const g = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.035, height, 8), TRUNK_MAT);
-  trunk.position.y = baseY + height / 2;
+function buildCane(baseY, height, tilt, leafCount = 20) {
+  // Geometria łodygi przesunięta tak, żeby jej LOKALNY punkt zerowy był u PODSTAWY
+  // (nie na środku) — dzięki temu obrót (tilt) pivotuje od podstawy, a czubek
+  // łodygi zawsze ląduje dokładnie tam, gdzie zaczepione są liście (były to
+  // wcześniej dwa niezależne, niespójne obliczenia — stąd liście "wisiały w powietrzu").
+  const trunkGeo = new THREE.CylinderGeometry(0.028, 0.035, height, 8);
+  trunkGeo.translate(0, height / 2, 0);
+  const trunk = new THREE.Mesh(trunkGeo, TRUNK_MAT);
+  trunk.position.set(0, baseY, 0);
   trunk.rotation.z = tilt;
-  g.add(trunk);
 
-  const topY = baseY + Math.cos(tilt) * height;
-  const topX = Math.sin(tilt) * height;
+  // Kępka liści — dziecko łodygi, w JEJ lokalnym układzie umieszczona dokładnie
+  // na czubku (y = height). Dziedziczy obrót łodygi automatycznie.
+  const tuft = new THREE.Group();
+  tuft.position.set(0, height, 0);
+  trunk.add(tuft);
 
-  const leafCount = 14;
   const leafMats = [LEAF_MAT, LEAF_MAT_LIGHT];
   for (let i = 0; i < leafCount; i++) {
     const a = (i / leafCount) * Math.PI * 2;
-    const leafLen = 0.55 + (i % 3) * 0.06;
+    const leafLen = 0.5 + (i % 4) * 0.08;
     const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.045, leafLen, 4), leafMats[i % 2]);
-    leaf.position.set(topX, topY + 0.05, 0);
-    // liście odchylone na zewnątrz i lekko opadające — typowy pokrój dracenowaty
     leaf.rotation.z = Math.PI / 2 - 0.55;
     leaf.rotation.y = a;
-    leaf.translateY(leafLen / 2);
-    g.add(leaf);
+    leaf.translateY(leafLen / 2); // odsuwa liść tak, żeby jego SZEROKA podstawa startowała z czubka łodygi
+    tuft.add(leaf);
   }
-  return g;
+  return trunk;
 }
 
 export function buildPottedPlant(scene, x, z) {
@@ -233,10 +236,150 @@ export function buildPottedPlant(scene, x, z) {
   soil.position.y = potH + 0.005;
   g.add(soil);
 
-  g.add(buildCane(potH, 1.5, -0.12));
-  g.add(buildCane(potH, 1.15, 0.18));
-  g.add(buildCane(potH, 0.85, -0.28));
+  g.add(buildCane(potH, 1.5, -0.12, 22));
+  g.add(buildCane(potH, 1.15, 0.18, 20));
+  g.add(buildCane(potH, 0.85, -0.28, 18));
 
   scene.add(g);
   return g;
+}
+
+// Wariant "rozłożysty" — dwie, nieco niższe łodygi, mocniej rozchylone na boki,
+// z gęstszymi kępkami liści (mniej pionowa, bardziej krzaczasta sylwetka).
+export function buildBushyPlant(scene, x, z) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+
+  const potH = 0.6;
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.27, potH, 20), POT_MAT);
+  pot.position.y = potH / 2;
+  g.add(pot);
+
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.027, 8, 24), POT_MAT);
+  rim.position.y = potH;
+  rim.rotation.x = Math.PI / 2;
+  g.add(rim);
+
+  const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.05, 20), SOIL_MAT);
+  soil.position.y = potH + 0.005;
+  g.add(soil);
+
+  g.add(buildCane(potH, 1.0, -0.42, 26));
+  g.add(buildCane(potH, 0.82, 0.38, 24));
+
+  scene.add(g);
+  return g;
+}
+
+// --- Ławeczka ---
+export function buildBench(scene, x, z, length, rotY = 0) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+
+  const seatH = 0.46, seatD = 0.42;
+  const top = rbox(length, 0.06, seatD, WOOD, 0.025);
+  top.position.y = seatH;
+  g.add(top);
+
+  const legGeo = new THREE.CylinderGeometry(0.035, 0.03, seatH - 0.03, 8);
+  const insetX = Math.min(0.5, length / 2 - 0.15);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const leg = new THREE.Mesh(legGeo, WOOD);
+      leg.position.set(sx * (length / 2 - insetX * 0.3), (seatH - 0.03) / 2, sz * (seatD / 2 - 0.06));
+      g.add(leg);
+    }
+  }
+  scene.add(g);
+  return g;
+}
+
+// --- Bonsai ---
+const BONSAI_TRUNK = new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 0.85 });
+const BONSAI_LEAF = new THREE.MeshStandardMaterial({ color: 0x3d7a3f, roughness: 0.8 });
+const BONSAI_LEAF_LIGHT = new THREE.MeshStandardMaterial({ color: 0x5a9a52, roughness: 0.8 });
+
+export function buildBonsai(scene, x, z) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+
+  const potH = 0.28;
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.42, potH, 24), POT_MAT);
+  pot.position.y = potH / 2;
+  g.add(pot);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.03, 8, 28), POT_MAT);
+  rim.position.y = potH;
+  rim.rotation.x = Math.PI / 2;
+  g.add(rim);
+  const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.05, 24), SOIL_MAT);
+  soil.position.y = potH + 0.005;
+  g.add(soil);
+
+  // Gruby, powyginany pień — kilka pochylonych segmentów zamiast jednego prostego
+  const trunkGroup = new THREE.Group();
+  trunkGroup.position.y = potH;
+  g.add(trunkGroup);
+
+  function trunkSegment(parent, len, r0, r1, tiltZ, tiltX) {
+    const geo = new THREE.CylinderGeometry(r1, r0, len, 8);
+    geo.translate(0, len / 2, 0);
+    const seg = new THREE.Mesh(geo, BONSAI_TRUNK);
+    seg.rotation.z = tiltZ;
+    seg.rotation.x = tiltX;
+    parent.add(seg);
+    const tip = new THREE.Group();
+    tip.position.y = len;
+    seg.add(tip);
+    return tip;
+  }
+
+  const t1 = trunkSegment(trunkGroup, 0.32, 0.075, 0.06, 0.25, 0.1);
+  const t2 = trunkSegment(t1, 0.26, 0.06, 0.045, -0.35, 0.15);
+  const branchL = trunkSegment(t2, 0.22, 0.03, 0.018, 0.7, 0);
+  const branchR = trunkSegment(t2, 0.2, 0.028, 0.016, -0.9, 0.3);
+  const top = trunkSegment(t2, 0.16, 0.03, 0.014, -0.1, -0.2);
+
+  // Płaskie, rozłożyste "poduchy" listowia — charakterystyczne dla bonsai
+  function foliagePad(parentTip, radius, count) {
+    const pad = new THREE.Group();
+    parentTip.add(pad);
+    for (let i = 0; i < count; i++) {
+      const mat = i % 3 === 0 ? BONSAI_LEAF_LIGHT : BONSAI_LEAF;
+      const s = radius * (0.5 + Math.random() * 0.6);
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(s, 6, 5), mat);
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.random() * radius;
+      leaf.position.set(Math.cos(ang) * rad, Math.random() * radius * 0.4, Math.sin(ang) * rad);
+      pad.add(leaf);
+    }
+  }
+  foliagePad(branchL, 0.22, 14);
+  foliagePad(branchR, 0.24, 16);
+  foliagePad(top, 0.26, 18);
+
+  scene.add(g);
+  return g;
+}
+
+// --- Lamele na futrynach przejść ---
+export function buildLamellaJamb(scene, wallX, doorEdgeZ, zDir, xDir, depth, height, slatThickness, colorDark, colorLight) {
+  // wallX: x powierzchni ściany (strona pokoju); doorEdgeZ: krawędź otworu drzwiowego (±DOOR_HALF_WIDTH)
+  // zDir: kierunek w głąb pokoju wzdłuż Z (+1/-1); xDir: kierunek "na zewnątrz" ściany (+1/-1)
+  const group = new THREE.Group();
+  const darkMat = new THREE.MeshStandardMaterial({ color: colorDark, roughness: 0.4 });
+  const lightMat = new THREE.MeshStandardMaterial({ color: colorLight, roughness: 0.3, metalness: 0.05 });
+  const slatDepth = 0.05;
+  const count = Math.max(2, Math.round(depth / slatThickness));
+  const actualT = depth / count;
+
+  for (let i = 0; i < count; i++) {
+    const mat = i % 2 === 0 ? darkMat : lightMat;
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(slatDepth, height, actualT * 0.94), mat);
+    const zOff = zDir * (actualT * (i + 0.5));
+    slat.position.set(wallX + xDir * slatDepth / 2, height / 2, doorEdgeZ + zOff);
+    group.add(slat);
+  }
+  scene.add(group);
+  return group;
 }
