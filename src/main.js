@@ -93,12 +93,14 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
   const rugHalfDE = DEPTH * 0.45 / 2;
 
   // Ławeczka — długość = połowa długości dywanika, oś symetrii pokrywa się
-  // z osią symetrii dywanika (z = 0), odsunięta od jego krawędzi jak sofa.
+  // z osią symetrii dywanika (z = 0), przysunięta bliżej drzwi: odległość od
+  // krawędzi dywanika = długość bocznej (krótszej, końcowej) krawędzi ławeczki.
   const benchLength = rugHalfWE * 2 * 0.5; // połowa "długości" (szerokości) dywanika
-  const benchX = eastCenterX - rugHalfWE + SOFA_GAP + benchLength / 2;
+  const benchSideEdge = 0.42; // = głębokość ławeczki (seatD w furniture.js) — jej boczna krawędź
+  const benchX = eastCenterX - rugHalfWE + benchSideEdge + benchSideEdge / 2;
   buildBench(scene, benchX, 0, benchLength, Math.PI / 2);
   OBSTACLES.push({
-    minX: benchX - 0.31, maxX: benchX + 0.31,
+    minX: benchX - benchSideEdge / 2 - 0.1, maxX: benchX + benchSideEdge / 2 + 0.1,
     minZ: -benchLength / 2 - 0.1, maxZ: benchLength / 2 + 0.1,
   });
 

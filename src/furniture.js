@@ -397,31 +397,14 @@ export function buildLamellaReveal(scene, doorEdgeZ, xCenter, width, height, sla
   const actualT = width / count;
 
   for (let i = 0; i < count; i++) {
-    const mat = i % 2 === 0 ? darkMat : lightMat;
+    // Odwrócona parzystość względem buildLamellaJamb: obie krawędzie tego
+    // panelu (styk z lamelami na ścianie po obu stronach) muszą wypaść jasne,
+    // żeby w rogu spotykała się jedna ciemna listwa (ze ściany) z jasną
+    // (z framugi) — a nie dwie ciemne listwy obok siebie.
+    const mat = i % 2 === 0 ? lightMat : darkMat;
     const slat = new THREE.Mesh(new THREE.BoxGeometry(actualT * 0.94, height, slatDepth), mat);
     const xOff = -width / 2 + actualT * (i + 0.5);
     slat.position.set(xCenter + xOff, height / 2, doorEdgeZ + protrudeDir * slatDepth / 2);
-    group.add(slat);
-  }
-  scene.add(group);
-  return group;
-}
-
-// Krótki "łącznik" w samej framudze — wypełnia lamelami wewnętrzną powierzchnię
-// ościeżnicy (grubość ściany), żeby panele z obu stron przejścia wizualnie się łączyły.
-export function buildLamellaConnector(scene, px, doorEdgeZ, zDir, wallThickness, height, slatThickness, colorDark, colorLight) {
-  const group = new THREE.Group();
-  const darkMat = new THREE.MeshStandardMaterial({ color: colorDark, roughness: 0.4 });
-  const lightMat = new THREE.MeshStandardMaterial({ color: colorLight, roughness: 0.3, metalness: 0.05 });
-  const slatDepth = 0.05;
-  const count = Math.max(2, Math.round(wallThickness / slatThickness));
-  const actualT = wallThickness / count;
-
-  for (let i = 0; i < count; i++) {
-    const mat = i % 2 === 0 ? darkMat : lightMat;
-    const slat = new THREE.Mesh(new THREE.BoxGeometry(actualT * 0.94, height, slatDepth), mat);
-    const xOff = -wallThickness / 2 + actualT * (i + 0.5);
-    slat.position.set(px + xOff, height / 2, doorEdgeZ + zDir * slatDepth / 2);
     group.add(slat);
   }
   scene.add(group);
