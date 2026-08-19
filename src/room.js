@@ -58,13 +58,8 @@ export function buildRoom(scene) {
       seg.position.set(px, H / 2, zCenter);
       scene.add(seg);
     }
-    // odrzwia — wąskie pionowe słupki po bokach przejścia, żeby otwór wyglądał wykończony
-    const jambGeo = new THREE.BoxGeometry(WALL_THICKNESS * 1.08, H, 0.08);
-    for (const side of [-1, 1]) {
-      const jamb = new THREE.Mesh(jambGeo, wallMatSide.clone());
-      jamb.position.set(px, H / 2, side * DOOR_HALF_WIDTH);
-      scene.add(jamb);
-    }
+    // odrzwia (wykończenie framugi) — teraz w pełni pokryte lamelami budowanymi
+    // z main.js (buildLamellaReveal), więc bazowej płaskiej listwy tu nie potrzeba
   }
 
   // Oświetlenie

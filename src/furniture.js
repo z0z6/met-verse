@@ -362,7 +362,7 @@ export function buildBonsai(scene, x, z) {
   return g;
 }
 
-// --- Lamele na futrynach przejść ---
+// --- Lamele na futrynach obu przejść (od podłogi do sufitu, obie strony ściany) ---
 export function buildLamellaJamb(scene, wallX, doorEdgeZ, zDir, xDir, depth, height, slatThickness, colorDark, colorLight) {
   // wallX: x powierzchni ściany (strona pokoju); doorEdgeZ: krawędź otworu drzwiowego (±DOOR_HALF_WIDTH)
   // zDir: kierunek w głąb pokoju wzdłuż Z (+1/-1); xDir: kierunek "na zewnątrz" ściany (+1/-1)
@@ -378,6 +378,50 @@ export function buildLamellaJamb(scene, wallX, doorEdgeZ, zDir, xDir, depth, hei
     const slat = new THREE.Mesh(new THREE.BoxGeometry(slatDepth, height, actualT * 0.94), mat);
     const zOff = zDir * (actualT * (i + 0.5));
     slat.position.set(wallX + xDir * slatDepth / 2, height / 2, doorEdgeZ + zOff);
+    group.add(slat);
+  }
+  scene.add(group);
+  return group;
+}
+
+// Lamele na wewnętrznej powierzchni framugi (krótki "łącznik" w grubości ściany,
+// widoczny podczas przechodzenia przez otwór) — listwy ułożone wzdłuż X (grubość
+// ściany), sterczące w stronę wnętrza przejścia, żeby wizualnie łączyły się
+// z lamelami na ścianach po obu stronach zamiast urywać się na gołej framudze.
+export function buildLamellaReveal(scene, doorEdgeZ, xCenter, width, height, slatThickness, colorDark, colorLight, protrudeDir) {
+  const group = new THREE.Group();
+  const darkMat = new THREE.MeshStandardMaterial({ color: colorDark, roughness: 0.4 });
+  const lightMat = new THREE.MeshStandardMaterial({ color: colorLight, roughness: 0.3, metalness: 0.05 });
+  const slatDepth = 0.05;
+  const count = Math.max(2, Math.round(width / slatThickness));
+  const actualT = width / count;
+
+  for (let i = 0; i < count; i++) {
+    const mat = i % 2 === 0 ? darkMat : lightMat;
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(actualT * 0.94, height, slatDepth), mat);
+    const xOff = -width / 2 + actualT * (i + 0.5);
+    slat.position.set(xCenter + xOff, height / 2, doorEdgeZ + protrudeDir * slatDepth / 2);
+    group.add(slat);
+  }
+  scene.add(group);
+  return group;
+}
+
+// Krótki "łącznik" w samej framudze — wypełnia lamelami wewnętrzną powierzchnię
+// ościeżnicy (grubość ściany), żeby panele z obu stron przejścia wizualnie się łączyły.
+export function buildLamellaConnector(scene, px, doorEdgeZ, zDir, wallThickness, height, slatThickness, colorDark, colorLight) {
+  const group = new THREE.Group();
+  const darkMat = new THREE.MeshStandardMaterial({ color: colorDark, roughness: 0.4 });
+  const lightMat = new THREE.MeshStandardMaterial({ color: colorLight, roughness: 0.3, metalness: 0.05 });
+  const slatDepth = 0.05;
+  const count = Math.max(2, Math.round(wallThickness / slatThickness));
+  const actualT = wallThickness / count;
+
+  for (let i = 0; i < count; i++) {
+    const mat = i % 2 === 0 ? darkMat : lightMat;
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(actualT * 0.94, height, slatDepth), mat);
+    const xOff = -wallThickness / 2 + actualT * (i + 0.5);
+    slat.position.set(px + xOff, height / 2, doorEdgeZ + zDir * slatDepth / 2);
     group.add(slat);
   }
   scene.add(group);

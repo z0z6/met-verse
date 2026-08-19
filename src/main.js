@@ -4,7 +4,7 @@ import { buildRoom, ROOM_HEIGHT } from './room.js';
 import { loadArtworks } from './artworks.js';
 import {
   buildLoungeSet, buildCornerSofa, buildCoffeeTable,
-  buildPottedPlant, buildBushyPlant, buildBench, buildBonsai, buildLamellaJamb,
+  buildPottedPlant, buildBushyPlant, buildBench, buildBonsai, buildLamellaJamb, buildLamellaReveal,
 } from './furniture.js';
 import { ROOMS, OBSTACLES, resolveCollision, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS } from './collision.js';
 import { GalleryControls } from './controls.js';
@@ -58,14 +58,15 @@ OBSTACLES.push(
 {
   const D = footprint.depth, EPS = 0.02, nearGap = 0.3;
   const tableShort = 0.6 * 1.5; // +50% w krótszej krawędzi
+  const extraGap = tableShort / 4; // dodatkowe odsunięcie od krawędzi sofy — 1/4 krótszej krawędzi stolika
   const tableLongStart = D + nearGap;
   const tableLongEnd = footprint.armB + EPS; // = koniec boczka B
   const tableLong = tableLongEnd - tableLongStart;
   const westTable = buildCoffeeTable(tableLong, tableShort);
   westTable.rotation.y = Math.PI / 2;
-  westTable.position.set(D + nearGap + tableShort / 2, 0, (tableLongStart + tableLongEnd) / 2);
+  westTable.position.set(D + nearGap + extraGap + tableShort / 2, 0, (tableLongStart + tableLongEnd) / 2);
   sofaGroup.add(westTable);
-  const tWorldX = sofaX + D + nearGap + tableShort / 2;
+  const tWorldX = sofaX + D + nearGap + extraGap + tableShort / 2;
   const tWorldZ = sofaZ + (tableLongStart + tableLongEnd) / 2;
   OBSTACLES.push({ x: tWorldX, z: tWorldZ, radius: Math.max(tableShort, 0.4) / 2 + 0.15 });
 }
@@ -95,10 +96,10 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
   // z osią symetrii dywanika (z = 0), odsunięta od jego krawędzi jak sofa.
   const benchLength = rugHalfWE * 2 * 0.5; // połowa "długości" (szerokości) dywanika
   const benchX = eastCenterX - rugHalfWE + SOFA_GAP + benchLength / 2;
-  buildBench(scene, benchX, 0, benchLength);
+  buildBench(scene, benchX, 0, benchLength, Math.PI / 2);
   OBSTACLES.push({
-    minX: benchX - benchLength / 2 - 0.1, maxX: benchX + benchLength / 2 + 0.1,
-    minZ: -0.31, maxZ: 0.31,
+    minX: benchX - 0.31, maxX: benchX + 0.31,
+    minZ: -benchLength / 2 - 0.1, maxZ: benchLength / 2 + 0.1,
   });
 
   // Donica z bonsai — po lewej stronie osoby wchodzącej do sali (od strony
@@ -110,12 +111,13 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
   OBSTACLES.push({ x: bonsaiX, z: bonsaiZ, radius: 0.65 });
 }
 
-// --- Lamele na futrynach obu przejść (od podłogi do sufitu, obie strony ściany) ---
+// --- Lamele na futrynach obu przejść (od podłogi do sufitu, obie strony ściany
+// + wewnętrzna powierzchnia framugi, żeby lamele łączyły się w rogach) ---
 {
   const LAMELLA_DEPTH = footprint.depth; // = długość (krótszego) boczka sofy, 0.85 m
   const LAMELLA_SLAT_T = 0.08; // = grubość zagłówków z sofy
   const LAMELLA_DARK = 0x2a1e16; // = kolor krawędzi stolika
-  const LAMELLA_LIGHT = 0xbfd4dc; // = kolor górnej powierzchni blatu stolika
+  const LAMELLA_LIGHT = 0x94743f; // = kolor dywaników
   for (const px of PARTITIONS) {
     for (const xDir of [-1, 1]) {
       const wallX = px + xDir * (WALL_THICKNESS / 2);
@@ -123,6 +125,12 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
         const doorEdgeZ = zDir * DOOR_HALF_WIDTH;
         buildLamellaJamb(scene, wallX, doorEdgeZ, zDir, xDir, LAMELLA_DEPTH, ROOM_HEIGHT, LAMELLA_SLAT_T, LAMELLA_DARK, LAMELLA_LIGHT);
       }
+    }
+    // Łącznik — wewnętrzna powierzchnia framugi w grubości ściany, żeby lamele
+    // ze ścian po obu stronach wizualnie się łączyły zamiast urywać na gołym murze
+    for (const zDir of [-1, 1]) {
+      const doorEdgeZ = zDir * DOOR_HALF_WIDTH;
+      buildLamellaReveal(scene, doorEdgeZ, px, WALL_THICKNESS, ROOM_HEIGHT, LAMELLA_SLAT_T, LAMELLA_DARK, LAMELLA_LIGHT, -zDir);
     }
   }
 }
