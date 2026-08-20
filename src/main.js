@@ -8,6 +8,7 @@ import {
 import { ROOMS, OBSTACLES, resolveCollision, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
+import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111114);
@@ -143,7 +144,7 @@ const controls = new GalleryControls(camera, renderer.domElement, scene);
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 let dwell = 0;
-const TELEPORT_DWELL = 1.5;
+const TELEPORT_DWELL = 2.2; // wydłużone (było 1.5 s) — mniej przypadkowych teleportacji
 
 const cardboard = new CardboardMode(renderer, camera);
 let inVR = false;
@@ -210,7 +211,20 @@ function updateCaption() {
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inVR) {
-    updateGazeTeleport(dt);
+    // Jeśli podłączony jest pilot/kontroler Bluetooth — nawigujemy nim,
+    // a teleporter spojrzeniem jest wyłączony (i jego licznik zerowany,
+    // żeby po odłączeniu pilota nie "doskoczył" resztką wcześniejszego wpatrywania).
+    const gp = getActiveGamepad();
+    const reticle = document.getElementById('reticle-ring');
+    if (gp) {
+      applyGamepadMovement(gp, camera, rig, dt, 2.4, resolveCollision);
+      dwell = 0;
+      document.getElementById('reticle-fill').style.height = '0%';
+      reticle.style.display = 'none';
+    } else {
+      reticle.style.display = 'block';
+      updateGazeTeleport(dt);
+    }
     cardboard.render(scene);
   } else {
     controls.update(dt);
@@ -267,10 +281,10 @@ if (window.VANTA) {
     el: '#vanta-bg',
     THREE: window.THREE,
     backgroundAlpha: 1,
-    highlightColor: 0xff8c00, // vibrant orange
-    midtoneColor: 0xa54641,   // mieszanka fioletu i pomarańczu
-    lowlightColor: 0x4b0082,  // deep violet
-    baseColor: 0x2e0050,      // głębokie fioletowe tło
+    highlightColor: 0xffe4c4, // bisque (jaśniejszy z podanych)
+    midtoneColor: 0xffdfc0,   // mieszanka obu podanych odcieni
+    lowlightColor: 0xffdab9,  // peachpuff (ciemniejszy z podanych)
+    baseColor: 0xc9a27a,      // głębszy, przygaszony odcień tej samej rodziny barw — dla kontrastu w tle
     blurFactor: 0.57,
     speed: 0.7,
     zoom: 1,
