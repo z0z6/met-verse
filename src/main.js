@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { buildRoom, ROOM_HEIGHT } from './room.js';
 import { loadArtworks } from './artworks.js';
 import {
@@ -19,12 +18,12 @@ const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.xr.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
-// Rig gracza — w VR headset steruje kamerą lokalnie, a my przesuwamy rig (teleportacja).
+// Rig gracza — w trybie VR (Cardboard) głowa steruje kierunkiem patrzenia,
+// a my przesuwamy rig (teleportacja spojrzeniem), zamiast ruszać kamerą wprost.
 const rig = new THREE.Group();
 scene.add(rig);
 rig.add(camera);
@@ -143,37 +142,24 @@ const controls = new GalleryControls(camera, renderer.domElement, scene);
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
-let inXR = false;
 let dwell = 0;
 const TELEPORT_DWELL = 1.5;
 
 const cardboard = new CardboardMode(renderer, camera);
-let inCardboard = false;
+let inVR = false;
 
-// --- Przycisk VR: wbudowujemy natywny VRButton (rozpoznaje wsparcie WebXR)
-// w ekran startowy, zamiast pozwalać mu doczepiać się automatycznie do body.
-const vrBtn = VRButton.createButton(renderer);
-vrBtn.id = 'vr-btn';
-vrBtn.classList.add('mode-btn');
-document.getElementById('intro-buttons').appendChild(vrBtn);
-
-renderer.xr.addEventListener('sessionstart', () => {
-  inXR = true;
-  rig.position.set(controls.player.x, 0, controls.player.z);
-  camera.position.set(0, 0, 0);
-  camera.rotation.set(0, 0, 0);
-  document.getElementById('intro').classList.add('hidden');
-  document.getElementById('hud').classList.remove('hidden');
-  document.getElementById('reticle-ring').style.display = 'block';
-});
-renderer.xr.addEventListener('sessionend', () => {
-  inXR = false;
-  controls.player.set(rig.position.x, 0, rig.position.z);
-  rig.position.set(0, 0, 0);
-  document.getElementById('reticle-ring').style.display = 'none';
-  document.getElementById('hud').classList.add('hidden');
-  document.getElementById('intro').classList.remove('hidden');
-});
+// --- Wykrywanie urządzenia: prawdziwe WebXR "immersive-vr" praktycznie nie
+// działa już na telefonach z goglami Cardboard (przeglądarki to porzuciły —
+// patrz rozmowa), więc VR realizujemy własnym trybem (żyroskop + podział
+// ekranu). Dostępny tylko na urządzeniach mobilnych — na desktopie przycisk
+// jest wyłączony i mówi wprost, dlaczego.
+const isMobileDevice = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
+const vrBtn = document.getElementById('start-vr');
+if (!isMobileDevice) {
+  vrBtn.disabled = true;
+  vrBtn.classList.add('long-label');
+  vrBtn.querySelector('span').textContent = 'VR dostępne tylko w urządzeniach mobilnych';
+}
 
 function updateGazeTeleport(dt) {
   const dir = new THREE.Vector3();
@@ -223,10 +209,7 @@ function updateCaption() {
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
-  if (inXR) {
-    updateGazeTeleport(dt);
-    renderer.render(scene, camera);
-  } else if (inCardboard) {
+  if (inVR) {
     updateGazeTeleport(dt);
     cardboard.render(scene);
   } else {
@@ -254,25 +237,49 @@ document.getElementById('start-fpp').addEventListener('click', () => startExperi
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
 document.getElementById('toggle-mode').addEventListener('click', () => controls.toggleMode());
 
-document.getElementById('start-cardboard').addEventListener('click', async () => {
+vrBtn.addEventListener('click', async () => {
+  if (vrBtn.disabled) return;
   rig.position.set(controls.player.x, 0, controls.player.z);
   camera.position.set(0, 0, 0);
   await cardboard.enable();
-  inCardboard = true;
+  inVR = true;
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   document.getElementById('reticle-ring').style.display = 'block';
-  document.getElementById('exit-cardboard').classList.remove('hidden');
+  document.getElementById('exit-vr').classList.remove('hidden');
 });
 
-document.getElementById('exit-cardboard').addEventListener('click', () => {
+document.getElementById('exit-vr').addEventListener('click', () => {
   cardboard.disable();
-  inCardboard = false;
+  inVR = false;
   controls.player.set(rig.position.x, 0, rig.position.z);
   rig.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
   document.getElementById('reticle-ring').style.display = 'none';
-  document.getElementById('exit-cardboard').classList.add('hidden');
+  document.getElementById('exit-vr').classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('intro').classList.remove('hidden');
 });
+
+// --- Tło ekranu startowego: Vanta.js "fog", kolory deep violet + vibrant orange ---
+if (window.VANTA) {
+  window.VANTA.FOG({
+    el: '#vanta-bg',
+    THREE: window.THREE,
+    backgroundAlpha: 1,
+    highlightColor: 0xff8c00, // vibrant orange
+    midtoneColor: 0xa54641,   // mieszanka fioletu i pomarańczu
+    lowlightColor: 0x4b0082,  // deep violet
+    baseColor: 0x2e0050,      // głębokie fioletowe tło
+    blurFactor: 0.57,
+    speed: 0.7,
+    zoom: 1,
+    minHeight: 200,
+    minWidth: 200,
+    scale: 2,
+    scaleMobile: 4,
+    mouseControls: true,
+    touchControls: true,
+    gyroControls: false,
+  });
+}
