@@ -178,7 +178,7 @@ function updateGazeTeleport(dt) {
       fill.style.height = Math.min(100, (dwell / TELEPORT_DWELL) * 100) + '%';
       if (dwell >= TELEPORT_DWELL) {
         const p = hits[0].point.clone();
-        resolveCollision(p, 0.45);
+        resolveCollision(p, 0.45, 1.0);
         rig.position.x = p.x;
         rig.position.z = p.z;
         dwell = 0;
@@ -212,13 +212,14 @@ function updateCaption() {
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inVR) {
-    // Jeśli podłączony jest pilot/kontroler Bluetooth — nawigujemy nim,
-    // a teleporter spojrzeniem jest wyłączony (i jego licznik zerowany,
-    // żeby po odłączeniu pilota nie "doskoczył" resztką wcześniejszego wpatrywania).
+    // Sanity check: wymuś kolizję w każdej klatce, na wypadek gdyby cokolwiek
+    // wypchnęło rig poza pomieszczenie (np. błąd sensora, teleport, gamepad)
+    resolveCollision(rig.position, 0.45, 1.0);
+
     const gp = getActiveGamepad();
     const reticle = document.getElementById('reticle-ring');
     if (gp) {
-      applyGamepadMovement(gp, camera, rig, dt, 2.4, resolveCollision);
+      applyGamepadMovement(gp, camera, rig, dt, 2.4, (pos, r) => resolveCollision(pos, r, 1.0));
       dwell = 0;
       document.getElementById('reticle-fill').style.height = '0%';
       reticle.style.display = 'none';
@@ -260,8 +261,20 @@ if (isMobileDevice) initMobileControls(controls);
 
 vrBtn.addEventListener('click', async () => {
   if (vrBtn.disabled) return;
-  rig.position.set(controls.player.x, 0, controls.player.z);
-  camera.position.set(0, 0, 0);
+
+  // ZAWSZE startuj w środku sali głównej, z bezpiecznym marginesem od ścian
+  const vrStart = new THREE.Vector3(0, 0, 0);
+  resolveCollision(vrStart, 0.45, 1.0);
+  rig.position.copy(vrStart);
+  rig.position.y = 0;
+
+  // Wysokość oka w VR — bez tego użytkownik leży na podłodze
+  camera.position.set(0, 1.65, 0);
+
+  // Zwiększ near plane w VR — eliminuje "widzenie przez ściany" przy bliskim kontakcie
+  camera.near = 0.15;
+  camera.updateProjectionMatrix();
+
   await cardboard.enable();
   inVR = true;
   document.getElementById('intro').classList.add('hidden');

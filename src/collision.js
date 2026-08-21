@@ -31,8 +31,7 @@ export const PARTITIONS = ROOMS.slice(0, -1).map((room) => room.maxX);
 
 export const OBSTACLES = []; // { x, z, radius } — wypełniane przy budowie mebli
 
-export function resolveCollision(pos, radius = 0.5) {
-  const margin = 0.5;
+export function resolveCollision(pos, radius = 0.5, margin = 0.5) {
   pos.x = Math.max(BOUNDS.minX + margin, Math.min(BOUNDS.maxX - margin, pos.x));
   pos.z = Math.max(BOUNDS.minZ + margin, Math.min(BOUNDS.maxZ - margin, pos.z));
 

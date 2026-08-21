@@ -30,22 +30,26 @@ export function buildRoom(scene) {
   // Ściany zewnętrzne: północna i południowa (pełna długość, bez przerw)
   const northWall = new THREE.Mesh(new THREE.PlaneGeometry(totalWidth, H), wallMat);
   northWall.position.set(0, H / 2, -DEPTH / 2);
+  northWall.name = 'wall';
   scene.add(northWall);
 
   const southWall = new THREE.Mesh(new THREE.PlaneGeometry(totalWidth, H), wallMat.clone());
   southWall.position.set(0, H / 2, DEPTH / 2);
   southWall.rotation.y = Math.PI;
+  southWall.name = 'wall';
   scene.add(southWall);
 
   // Ściany szczytowe (zachodnia i wschodnia)
   const westWall = new THREE.Mesh(new THREE.PlaneGeometry(DEPTH, H), wallMatSide);
   westWall.position.set(BOUNDS.minX, H / 2, 0);
   westWall.rotation.y = Math.PI / 2;
+  westWall.name = 'wall';
   scene.add(westWall);
 
   const eastWall = new THREE.Mesh(new THREE.PlaneGeometry(DEPTH, H), wallMatSide.clone());
   eastWall.position.set(BOUNDS.maxX, H / 2, 0);
   eastWall.rotation.y = -Math.PI / 2;
+  eastWall.name = 'wall';
   scene.add(eastWall);
 
   // Ściany działowe — bryły z realną grubością (nie płaszczyzny), z przejściem
@@ -56,6 +60,7 @@ export function buildRoom(scene) {
       const zCenter = side * (DOOR_HALF_WIDTH + segLen / 2);
       const seg = new THREE.Mesh(new THREE.BoxGeometry(WALL_THICKNESS, H, segLen), wallMatSide.clone());
       seg.position.set(px, H / 2, zCenter);
+      seg.name = 'wall';
       scene.add(seg);
     }
     // odrzwia (wykończenie framugi) — teraz w pełni pokryte lamelami budowanymi
