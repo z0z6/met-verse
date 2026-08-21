@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { resolveCollision } from './collision.js';
 
-const keys = {};
+export const keys = {};
 window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
@@ -99,6 +99,15 @@ export class GalleryControls {
       this.pitch -= e.movementY * 0.0022;
       this.pitch = Math.max(-1.3, Math.min(1.3, this.pitch));
     });
+  }
+
+  // Rozglądanie się przez dotyk (mobile) — ta sama formuła co w mousemove,
+  // ale wywoływana bezpośrednio, niezależnie od blokady kursora (Pointer Lock
+  // i tak nie ma sensu/nie działa tak samo na dotykowych przeglądarkach).
+  applyLookDelta(dx, dy) {
+    this.yaw -= dx * 0.0035;
+    this.pitch -= dy * 0.0035;
+    this.pitch = Math.max(-1.3, Math.min(1.3, this.pitch));
   }
 
   setMode(mode) {

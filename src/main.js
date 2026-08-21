@@ -9,6 +9,7 @@ import { ROOMS, OBSTACLES, resolveCollision, DEPTH, PARTITIONS, DOOR_HALF_WIDTH,
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
+import { initMobileControls } from './mobileControls.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111114);
@@ -245,11 +246,17 @@ function startExperience(mode) {
   controls.setMode(mode);
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  renderer.domElement.requestPointerLock();
+  if (isMobileDevice) {
+    document.getElementById('joystick-base').classList.remove('hidden');
+  } else {
+    renderer.domElement.requestPointerLock();
+  }
 }
 document.getElementById('start-fpp').addEventListener('click', () => startExperience('fpp'));
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
 document.getElementById('toggle-mode').addEventListener('click', () => controls.toggleMode());
+
+if (isMobileDevice) initMobileControls(controls);
 
 vrBtn.addEventListener('click', async () => {
   if (vrBtn.disabled) return;
