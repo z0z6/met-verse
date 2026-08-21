@@ -5,7 +5,7 @@ import {
   buildLoungeSet, buildCornerSofa, buildCoffeeTable,
   buildPottedPlant, buildBushyPlant, buildBench, buildBonsai, buildLamellaJamb, buildLamellaReveal,
 } from './furniture.js';
-import { ROOMS, OBSTACLES, resolveCollision, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS } from './collision.js';
+import { ROOMS, OBSTACLES, resolveCollision, crossesSolidWall, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
@@ -179,8 +179,13 @@ function updateGazeTeleport(dt) {
       if (dwell >= TELEPORT_DWELL) {
         const p = hits[0].point.clone();
         resolveCollision(p, 0.45, 1.0);
-        rig.position.x = p.x;
-        rig.position.z = p.z;
+
+        // Blokujemy teleport, jeśli droga do celu przecinałaby pełną ścianę
+        // działową (dozwolone jest tylko przejście przez otwór drzwi).
+        if (!crossesSolidWall(rig.position, p, 0.45)) {
+          rig.position.x = p.x;
+          rig.position.z = p.z;
+        }
         dwell = 0;
         fill.style.height = '0%';
       }

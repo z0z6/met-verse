@@ -68,3 +68,23 @@ export function resolveCollision(pos, radius = 0.5, margin = 0.5) {
   }
   return pos;
 }
+
+// Sprawdza, czy prosta między `from` a `to` przecina pełny (nie-drzwiowy)
+// fragment którejś ze ścian działowych. Używane do blokowania teleportacji
+// "na skróty" przez ścianę zamiast przez otwór drzwi.
+export function crossesSolidWall(from, to, radius = 0.45) {
+  for (const px of PARTITIONS) {
+    const fromSide = from.x - px;
+    const toSide = to.x - px;
+    if (fromSide === 0 && toSide === 0) continue;
+    if ((fromSide > 0) === (toSide > 0)) continue; // nie przecina płaszczyzny tej ściany
+
+    const t = fromSide / (fromSide - toSide); // 0..1 — miejsce przecięcia na odcinku
+    const zAtWall = from.z + t * (to.z - from.z);
+
+    if (Math.abs(zAtWall) > DOOR_HALF_WIDTH - radius) {
+      return true; // przecięcie wypada w pełnym murze, nie w przejściu
+    }
+  }
+  return false;
+}

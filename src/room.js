@@ -31,12 +31,14 @@ export function buildRoom(scene) {
   const northWall = new THREE.Mesh(new THREE.PlaneGeometry(totalWidth, H), wallMat);
   northWall.position.set(0, H / 2, -DEPTH / 2);
   northWall.name = 'wall';
+  northWall.material.side = THREE.DoubleSide;
   scene.add(northWall);
 
   const southWall = new THREE.Mesh(new THREE.PlaneGeometry(totalWidth, H), wallMat.clone());
   southWall.position.set(0, H / 2, DEPTH / 2);
   southWall.rotation.y = Math.PI;
   southWall.name = 'wall';
+  southWall.material.side = THREE.DoubleSide;
   scene.add(southWall);
 
   // Ściany szczytowe (zachodnia i wschodnia)
@@ -44,12 +46,14 @@ export function buildRoom(scene) {
   westWall.position.set(BOUNDS.minX, H / 2, 0);
   westWall.rotation.y = Math.PI / 2;
   westWall.name = 'wall';
+  westWall.material.side = THREE.DoubleSide;
   scene.add(westWall);
 
   const eastWall = new THREE.Mesh(new THREE.PlaneGeometry(DEPTH, H), wallMatSide.clone());
   eastWall.position.set(BOUNDS.maxX, H / 2, 0);
   eastWall.rotation.y = -Math.PI / 2;
   eastWall.name = 'wall';
+  eastWall.material.side = THREE.DoubleSide;
   scene.add(eastWall);
 
   // Ściany działowe — bryły z realną grubością (nie płaszczyzny), z przejściem
