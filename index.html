@@ -16,7 +16,7 @@
 </script>
 
 <style>
-  /* Upewniamy się, że tło cząsteczek jest zawsze pod spodem */
+  /* Tło cząsteczek pod spodem (zastępuje Vanta.js) */
   #canvas-container {
     position: fixed;
     top: 0;
@@ -24,11 +24,23 @@
     width: 100vw;
     height: 100vh;
     z-index: 0;
-    pointer-events: none; /* Kliknięcia przechodzą do przycisków pod spodem */
+    pointer-events: none; /* Kliknięcia przechodzą do przycisków */
   }
-  #intro, #hud {
-    position: relative;
+  
+  /* Panel startowy nad tłem cząsteczek */
+  #intro {
+    position: fixed;
+    inset: 0;
     z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent; /* Pozwala zobaczyć cząsteczki */
+  }
+
+  /* WYMUSZONE ukrycie canvasu metaversum dopóki nie klikniemy "Start" */
+  body > canvas {
+    display: none !important;
   }
 </style>
 </head>
@@ -80,11 +92,9 @@
 
   async function loadConfigAndInit() {
     try {
-      // 1. Pobierz ustawienia z pliku JSON
       const response = await fetch('config.json');
       if (response.ok) {
         const jsonConfig = await response.json();
-        // 2. Zapisz je w konfiguracji (nadpisując domyślne)
         for (const key in jsonConfig) {
           Config.set(key, jsonConfig[key]);
         }
@@ -93,17 +103,14 @@
       console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
     }
     
-    // 3. Ustaw kolor tła strony
     document.body.style.background = Config.get('bgColor');
-    
-    // 4. Uruchom system cząsteczek
     init('canvas-container');
   }
 
   document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
-<!-- Twój istniejący kod logiki metaversum -->
+<!-- Główna logika metaversum -->
 <script type="module" src="src/main.js"></script>
 </body>
 </html>
