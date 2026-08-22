@@ -63,12 +63,26 @@ export class CardboardMode {
     if (this._hasSensor) {
       this.camera.quaternion.copy(this.getOrientationQuaternion());
     }
-    this.camera.updateMatrixWorld();
-    this.stereo.update(this.camera);
 
     const size = new THREE.Vector2();
     this.renderer.getSize(size);
     const halfW = size.x / 2;
+
+    // BŁĄD 1: kamera musi mieć proporcje POŁOWY ekranu (tyle, ile faktycznie
+    // zajmuje jedno oko), inaczej cała scena — łącznie ze ścianami — renderuje
+    // się spłaszczona w poziomie i wygląda jakby nie zamykała pomieszczenia.
+    const eyeAspect = halfW / size.y;
+    if (this.camera.aspect !== eyeAspect) {
+      this.camera.aspect = eyeAspect;
+      this.camera.updateProjectionMatrix();
+    }
+
+    // BŁĄD 2: wymuszamy odświeżenie macierzy świata CAŁEJ sceny (w tym rig,
+    // rodzica kamery) PRZED policzeniem kamer stereo — bez tego stereo.update()
+    // czytało pozycję rig sprzed jednej klatki (widoczne zwłaszcza na starcie VR).
+    scene.updateMatrixWorld(true);
+    this.camera.updateMatrixWorld(true);
+    this.stereo.update(this.camera);
 
     this.renderer.setScissorTest(true);
 
@@ -81,5 +95,14 @@ export class CardboardMode {
     this.renderer.render(scene, this.stereo.cameraR);
 
     this.renderer.setScissorTest(false);
+  }
+
+  // Wywołaj przy wejściu do VR i przy każdej zmianie rozmiaru okna w trakcie
+  // sesji VR — bez tego pierwsza klatka może użyć jeszcze nieprawidłowych proporcji.
+  updateAspect() {
+    const size = new THREE.Vector2();
+    this.renderer.getSize(size);
+    this.camera.aspect = (size.x / 2) / size.y;
+    this.camera.updateProjectionMatrix();
   }
 }

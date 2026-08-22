@@ -242,9 +242,13 @@ function animate() {
 renderer.setAnimationLoop(animate);
 
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (inVR) {
+    cardboard.updateAspect();
+  } else {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
 });
 
 // --- UI: ekran startowy ---
@@ -278,7 +282,7 @@ vrBtn.addEventListener('click', async () => {
 
   // Zwiększ near plane w VR — eliminuje "widzenie przez ściany" przy bliskim kontakcie
   camera.near = 0.15;
-  camera.updateProjectionMatrix();
+  cardboard.updateAspect(); // poprawne proporcje (połowa ekranu na oko) od pierwszej klatki
 
   await cardboard.enable();
   inVR = true;
@@ -294,6 +298,8 @@ document.getElementById('exit-vr').addEventListener('click', () => {
   controls.player.set(rig.position.x, 0, rig.position.z);
   rig.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
   document.getElementById('reticle-ring').style.display = 'none';
   document.getElementById('exit-vr').classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
