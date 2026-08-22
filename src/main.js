@@ -24,11 +24,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
-// --- ZMIANA 1: Ukryj canvas metaversum na starcie, aby nie "prześwitywał" przez intro ---
+// Ukryj canvas metaversum na starcie, aby nie prześwitywał przez intro
 renderer.domElement.style.display = 'none';
 
-// Rig gracza — w trybie VR (Cardboard) głowa steruje kierunkiem patrzenia,
-// a my przesuwamy rig (teleportacja spojrzeniem), zamiast ruszać kamerą wprost.
+// Rig gracza
 const rig = new THREE.Group();
 scene.add(rig);
 rig.add(camera);
@@ -148,6 +147,7 @@ if (!isMobileDevice) {
   vrBtn.querySelector('span').textContent = 'VR dostępne tylko w urządzeniach mobilnych';
 }
 
+// Bezpieczny Promień Teleportacji VR (Zabezpieczenie przed przechodzeniem przez ściany)
 function updateGazeTeleport(dt) {
   const dir = new THREE.Vector3();
   const origin = new THREE.Vector3();
@@ -162,13 +162,22 @@ function updateGazeTeleport(dt) {
       dwell += dt;
       fill.style.height = Math.min(100, (dwell / TELEPORT_DWELL) * 100) + '%';
       if (dwell >= TELEPORT_DWELL) {
-        const p = hits[0].point.clone();
-        resolveCollision(p, 0.45, 1.0);
+        const targetPoint = hits[0].point.clone();
+        
+        // Promień kolizji gracza w VR (zwiększony margines 0.55m od ścian)
+        const PLAYER_VR_RADIUS = 0.55; 
 
-        if (!crossesSolidWall(rig.position, p, 0.45)) {
-          rig.position.x = p.x;
-          rig.position.z = p.z;
+        // 1. Ogranicz pozycję wewnątrz ścian/obszaru
+        resolveCollision(targetPoint, PLAYER_VR_RADIUS, 1.0);
+
+        // 2. Sprawdź, czy nowa linia przemieszczenia nie przecina litej ściany
+        if (!crossesSolidWall(rig.position, targetPoint, PLAYER_VR_RADIUS)) {
+          rig.position.x = targetPoint.x;
+          rig.position.z = targetPoint.z;
+          // Dodatkowy warunek korygujący
+          resolveCollision(rig.position, PLAYER_VR_RADIUS, 1.0);
         }
+
         dwell = 0;
         fill.style.height = '0%';
       }
@@ -200,11 +209,13 @@ function updateCaption() {
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inVR) {
-    resolveCollision(rig.position, 0.45, 1.0);
+    // Ciągłe odtrącanie gracza od ściany w trybie VR
+    resolveCollision(rig.position, 0.55, 1.0);
+
     const gp = getActiveGamepad();
     const reticle = document.getElementById('reticle-ring');
     if (gp) {
-      applyGamepadMovement(gp, camera, rig, dt, 2.4, (pos, r) => resolveCollision(pos, r, 1.0));
+      applyGamepadMovement(gp, camera, rig, dt, 2.4, (pos, r) => resolveCollision(pos, Math.max(r, 0.55), 1.0));
       dwell = 0;
       document.getElementById('reticle-fill').style.height = '0%';
       reticle.style.display = 'none';
@@ -231,9 +242,8 @@ window.addEventListener('resize', () => {
   }
 });
 
-// --- UI: ekran startowy ---
+// UI: ekran startowy
 function startExperience(mode) {
-  // --- ZMIANA 2: Pokaż canvas metaversum po kliknięciu przycisku ---
   renderer.domElement.style.display = 'block';
   
   controls.setMode(mode);
@@ -256,11 +266,11 @@ if (isMobileDevice) initMobileControls(controls);
 vrBtn.addEventListener('click', async () => {
   if (vrBtn.disabled) return;
 
-  // --- ZMIANA 3: Pokaż canvas metaversum przy wejściu w VR ---
   renderer.domElement.style.display = 'block';
 
-  const vrStart = new THREE.Vector3(0, 0, 0);
-  resolveCollision(vrStart, 0.45, 1.0);
+  // Bezpieczny start pozycji w VR - na samym środku głównej sali z uwzględnieniem kolizji
+  const vrStart = new THREE.Vector3(loungeX, 0, 0);
+  resolveCollision(vrStart, 0.55, 1.0);
   rig.position.copy(vrStart);
   rig.position.y = 0;
 
@@ -289,8 +299,5 @@ document.getElementById('exit-vr').addEventListener('click', () => {
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('intro').classList.remove('hidden');
   
-  // --- ZMIANA 4: Ukryj canvas metaversum przy powrocie do menu startowego ---
   renderer.domElement.style.display = 'none';
 });
-
-// (Usunięto stary blok kodu Vanta.js, który był tutaj wcześniej)
