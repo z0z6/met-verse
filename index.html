@@ -6,12 +6,6 @@
 <title>Galeria — Metavers</title>
 <link rel="stylesheet" href="style.css">
 
-<!-- Vanta.js (efekt tła "fog") + jego własna, klasyczna kopia three.js — działa
-     niezależnie od modułowego three.js używanego przez resztę aplikacji poniżej,
-     więc się nie gryzą (osobna globalna przestrzeń nazw vs. import modułowy). -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.fog.min.js"></script>
-
 <script type="importmap">
 {
   "imports": {
@@ -20,11 +14,30 @@
   }
 }
 </script>
+
+<style>
+  /* Upewniamy się, że tło cząsteczek jest zawsze pod spodem */
+  #canvas-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none; /* Kliknięcia przechodzą do przycisków pod spodem */
+  }
+  #intro, #hud {
+    position: relative;
+    z-index: 10;
+  }
+</style>
 </head>
 <body>
 
+<!-- Kontener dla systemu cząsteczek -->
+<div id="canvas-container"></div>
+
 <div id="intro">
-  <div id="vanta-bg"></div>
   <div class="intro-panel">
     <h1>Galeria</h1>
     <p>Wirtualna przestrzeń wystawowa — chodź, zwiedzaj, dodawaj własne prace.</p>
@@ -43,6 +56,9 @@
       </button>
     </div>
     <p class="hint">W A S D — ruch &nbsp;|&nbsp; mysz — rozglądanie (kliknij ekran, by zablokować kursor) &nbsp;|&nbsp; SHIFT — bieg</p>
+    <p class="hint" style="margin-top: 15px; font-size: 0.85em; opacity: 0.6;">
+      <a href="admin.html" style="color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor;">⚙️ Dostosuj tło (Panel Admina)</a>
+    </p>
   </div>
 </div>
 
@@ -55,9 +71,39 @@
   </div>
   <div id="reticle-ring"><div id="reticle-fill"></div></div>
   <div id="artwork-caption" class="hidden"></div>
-  <div id="joystick-base" class="hidden"><div id="joystick-knob"></div></div>
 </div>
 
+<!-- Skrypt inicjalizujący system cząsteczek z pliku JSON -->
+<script type="module">
+  import { Config } from './js/config.js';
+  import { init } from './js/particles.js';
+
+  async function loadConfigAndInit() {
+    try {
+      // 1. Pobierz ustawienia z pliku JSON
+      const response = await fetch('config.json');
+      if (response.ok) {
+        const jsonConfig = await response.json();
+        // 2. Zapisz je w konfiguracji (nadpisując domyślne)
+        for (const key in jsonConfig) {
+          Config.set(key, jsonConfig[key]);
+        }
+      }
+    } catch (e) {
+      console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
+    }
+    
+    // 3. Ustaw kolor tła strony
+    document.body.style.background = Config.get('bgColor');
+    
+    // 4. Uruchom system cząsteczek
+    init('canvas-container');
+  }
+
+  document.addEventListener('DOMContentLoaded', loadConfigAndInit);
+</script>
+
+<!-- Twój istniejący kod logiki metaversum -->
 <script type="module" src="src/main.js"></script>
 </body>
 </html>
