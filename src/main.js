@@ -24,7 +24,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
-// NOWOŚĆ: Ukryj canvas metaversum na starcie, aby nie "prześwitywał" przez intro
+// --- ZMIANA 1: Ukryj canvas metaversum na starcie, aby nie "prześwitywał" przez intro ---
 renderer.domElement.style.display = 'none';
 
 // Rig gracza — w trybie VR (Cardboard) głowa steruje kierunkiem patrzenia,
@@ -39,6 +39,7 @@ const loungeX = (mainRoom.minX + mainRoom.maxX) / 2;
 buildLoungeSet(scene, loungeX, 0);
 OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
 
+// Kanapa narożna w sali zachodniej
 const westRoom = ROOMS[0];
 const westCenterX = (westRoom.minX + westRoom.maxX) / 2;
 const ARM_A = 4, ARM_B = 4;
@@ -54,6 +55,7 @@ OBSTACLES.push(
   { x: sofaX + footprint.depth / 2, z: sofaZ + footprint.depth + (footprint.armB - footprint.depth) / 2, radius: (footprint.armB - footprint.depth) / 2 + 0.5 }
 );
 
+// Stolik kawowy
 {
   const D = footprint.depth, EPS = 0.02, nearGap = 0.3;
   const tableShort = 0.6 * 1.5;
@@ -70,6 +72,7 @@ OBSTACLES.push(
   OBSTACLES.push({ x: tWorldX, z: tWorldZ, radius: Math.max(tableShort, 0.4) / 2 + 0.15 });
 }
 
+// Donica z draceną (sala zachodnia)
 {
   const plantX = westCenterX + rugHalfW - SOFA_GAP;
   const plantZ = rugHalfD - SOFA_GAP;
@@ -77,9 +80,11 @@ OBSTACLES.push(
   OBSTACLES.push({ x: plantX, z: plantZ, radius: 0.5 });
 }
 
+// Donica z draceną (sala główna)
 buildPottedPlant(scene, loungeX + 1.55, -1.75);
 OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
 
+// Sala wschodnia: ławeczka + bonsai
 {
   const eastRoom = ROOMS[2];
   const eastCenterX = (eastRoom.minX + eastRoom.maxX) / 2;
@@ -101,6 +106,7 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
   OBSTACLES.push({ x: bonsaiX, z: bonsaiZ, radius: 0.65 });
 }
 
+// Lamele na futrynach
 {
   const LAMELLA_DEPTH = footprint.depth;
   const LAMELLA_SLAT_T = 0.08;
@@ -120,6 +126,7 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
     }
   }
 }
+
 let interactiveArtworks = [];
 loadArtworks(scene).then(list => { interactiveArtworks = list; });
 
@@ -157,6 +164,7 @@ function updateGazeTeleport(dt) {
       if (dwell >= TELEPORT_DWELL) {
         const p = hits[0].point.clone();
         resolveCollision(p, 0.45, 1.0);
+
         if (!crossesSolidWall(rig.position, p, 0.45)) {
           rig.position.x = p.x;
           rig.position.z = p.z;
@@ -225,18 +233,20 @@ window.addEventListener('resize', () => {
 
 // --- UI: ekran startowy ---
 function startExperience(mode) {
-  // NOWOŚĆ: Pokaż canvas metaversum po kliknięciu przycisku
+  // --- ZMIANA 2: Pokaż canvas metaversum po kliknięciu przycisku ---
   renderer.domElement.style.display = 'block';
   
   controls.setMode(mode);
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+  
   if (isMobileDevice) {
     document.getElementById('joystick-base').classList.remove('hidden');
   } else {
     renderer.domElement.requestPointerLock();
   }
 }
+
 document.getElementById('start-fpp').addEventListener('click', () => startExperience('fpp'));
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
 document.getElementById('toggle-mode').addEventListener('click', () => controls.toggleMode());
@@ -246,7 +256,7 @@ if (isMobileDevice) initMobileControls(controls);
 vrBtn.addEventListener('click', async () => {
   if (vrBtn.disabled) return;
 
-  // NOWOŚĆ: Pokaż canvas metaversum przy wejściu w VR
+  // --- ZMIANA 3: Pokaż canvas metaversum przy wejściu w VR ---
   renderer.domElement.style.display = 'block';
 
   const vrStart = new THREE.Vector3(0, 0, 0);
@@ -279,6 +289,8 @@ document.getElementById('exit-vr').addEventListener('click', () => {
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('intro').classList.remove('hidden');
   
-  // NOWOŚĆ: Ukryj canvas metaversum przy powrocie do menu startowego
+  // --- ZMIANA 4: Ukryj canvas metaversum przy powrocie do menu startowego ---
   renderer.domElement.style.display = 'none';
 });
+
+// (Usunięto stary blok kodu Vanta.js, który był tutaj wcześniej)
