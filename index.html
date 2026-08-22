@@ -16,7 +16,7 @@
 </script>
 
 <style>
-  /* Tło cząsteczek pod spodem (zastępuje Vanta.js) */
+  /* Tło cząsteczek pod spodem */
   #canvas-container {
     position: fixed;
     top: 0;
@@ -24,7 +24,7 @@
     width: 100vw;
     height: 100vh;
     z-index: 0;
-    pointer-events: none; /* Kliknięcia przechodzą do przycisków */
+    pointer-events: none;
   }
   
   /* Panel startowy nad tłem cząsteczek */
@@ -35,12 +35,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent; /* Pozwala zobaczyć cząsteczki */
-  }
-
-  /* WYMUSZONE ukrycie canvasu metaversum dopóki nie klikniemy "Start" */
-  body > canvas {
-    display: none !important;
+    background: transparent;
   }
 </style>
 </head>
