@@ -24,6 +24,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
+// NOWOŚĆ: Ukryj canvas metaversum na starcie, aby nie "prześwitywał" przez intro
+renderer.domElement.style.display = 'none';
+
 // Rig gracza — w trybie VR (Cardboard) głowa steruje kierunkiem patrzenia,
 // a my przesuwamy rig (teleportacja spojrzeniem), zamiast ruszać kamerą wprost.
 const rig = new THREE.Group();
@@ -36,14 +39,12 @@ const loungeX = (mainRoom.minX + mainRoom.maxX) / 2;
 buildLoungeSet(scene, loungeX, 0);
 OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
 
-// Kanapa narożna w sali zachodniej — zbliżona do rogu dywanika, krawędzie
-// równoległe do jego krawędzi, w odległości równej długości boczków (podłokietników, D = 0,85 m).
 const westRoom = ROOMS[0];
 const westCenterX = (westRoom.minX + westRoom.maxX) / 2;
 const ARM_A = 4, ARM_B = 4;
-const rugHalfW = (westRoom.maxX - westRoom.minX) * 0.5 / 2; // połowa szerokości dywanika
-const rugHalfD = DEPTH * 0.45 / 2; // połowa głębokości dywanika
-const SOFA_GAP = 0.85; // = długość boczków (podłokietników)
+const rugHalfW = (westRoom.maxX - westRoom.minX) * 0.5 / 2;
+const rugHalfD = DEPTH * 0.45 / 2;
+const SOFA_GAP = 0.85;
 const sofaX = westCenterX - rugHalfW + SOFA_GAP;
 const sofaZ = -rugHalfD + SOFA_GAP;
 const { group: sofaGroup, footprint } = buildCornerSofa(scene, sofaX, sofaZ, ARM_A, ARM_B);
@@ -53,15 +54,12 @@ OBSTACLES.push(
   { x: sofaX + footprint.depth / 2, z: sofaZ + footprint.depth + (footprint.armB - footprint.depth) / 2, radius: (footprint.armB - footprint.depth) / 2 + 0.5 }
 );
 
-// Stolik kawowy — obrócony o 90° (dłuższa krawędź równoległa do wewnętrznej
-// krawędzi skrzydła B), wydłużony tak, żeby krótsza krawędź kończyła się
-// tam, gdzie kończy się boczek sofy, i powiększony o 50% w krótszej krawędzi.
 {
   const D = footprint.depth, EPS = 0.02, nearGap = 0.3;
-  const tableShort = 0.6 * 1.5; // +50% w krótszej krawędzi
-  const extraGap = tableShort / 4; // dodatkowe odsunięcie od krawędzi sofy — 1/4 krótszej krawędzi stolika
+  const tableShort = 0.6 * 1.5;
+  const extraGap = tableShort / 4;
   const tableLongStart = D + nearGap;
-  const tableLongEnd = footprint.armB + EPS; // = koniec boczka B
+  const tableLongEnd = footprint.armB + EPS;
   const tableLong = tableLongEnd - tableLongStart;
   const westTable = buildCoffeeTable(tableLong, tableShort);
   westTable.rotation.y = Math.PI / 2;
@@ -72,8 +70,6 @@ OBSTACLES.push(
   OBSTACLES.push({ x: tWorldX, z: tWorldZ, radius: Math.max(tableShort, 0.4) / 2 + 0.15 });
 }
 
-// Donica z draceną (wariant rozłożysty) — w przeciwległym rogu dywanika,
-// odsunięta od jego krawędzi tak samo jak sofa.
 {
   const plantX = westCenterX + rugHalfW - SOFA_GAP;
   const plantZ = rugHalfD - SOFA_GAP;
@@ -81,23 +77,17 @@ OBSTACLES.push(
   OBSTACLES.push({ x: plantX, z: plantZ, radius: 0.5 });
 }
 
-// Donica z draceną w sali głównej — ta sama funkcja, teraz z poprawionym
-// zaczepieniem liści (patrz furniture.js) i większą liczbą liści.
 buildPottedPlant(scene, loungeX + 1.55, -1.75);
 OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
 
-// --- Sala wschodnia: ławeczka + bonsai ---
 {
   const eastRoom = ROOMS[2];
   const eastCenterX = (eastRoom.minX + eastRoom.maxX) / 2;
   const rugHalfWE = (eastRoom.maxX - eastRoom.minX) * 0.5 / 2;
   const rugHalfDE = DEPTH * 0.45 / 2;
 
-  // Ławeczka — długość = połowa długości dywanika, oś symetrii pokrywa się
-  // z osią symetrii dywanika (z = 0), przysunięta bliżej drzwi: odległość od
-  // krawędzi dywanika = długość bocznej (krótszej, końcowej) krawędzi ławeczki.
-  const benchLength = rugHalfWE * 2 * 0.5; // połowa "długości" (szerokości) dywanika
-  const benchSideEdge = 0.42; // = głębokość ławeczki (seatD w furniture.js) — jej boczna krawędź
+  const benchLength = rugHalfWE * 2 * 0.5;
+  const benchSideEdge = 0.42;
   const benchX = eastCenterX - rugHalfWE + benchSideEdge + benchSideEdge / 2;
   buildBench(scene, benchX, 0, benchLength, Math.PI / 2);
   OBSTACLES.push({
@@ -105,22 +95,17 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
     minZ: -benchLength / 2 - 0.1, maxZ: benchLength / 2 + 0.1,
   });
 
-  // Donica z bonsai — po lewej stronie osoby wchodzącej do sali (od strony
-  // sali głównej, patrząc w głąb, czyli po stronie -Z), w rogu dywanika,
-  // odsunięta od krawędzi tak samo jak sofa w sali zachodniej.
   const bonsaiX = eastCenterX + rugHalfWE - SOFA_GAP;
   const bonsaiZ = -(rugHalfDE - SOFA_GAP);
   buildBonsai(scene, bonsaiX, bonsaiZ);
   OBSTACLES.push({ x: bonsaiX, z: bonsaiZ, radius: 0.65 });
 }
 
-// --- Lamele na futrynach obu przejść (od podłogi do sufitu, obie strony ściany
-// + wewnętrzna powierzchnia framugi, żeby lamele łączyły się w rogach) ---
 {
-  const LAMELLA_DEPTH = footprint.depth; // = długość (krótszego) boczka sofy, 0.85 m
-  const LAMELLA_SLAT_T = 0.08; // = grubość zagłówków z sofy
-  const LAMELLA_DARK = 0x2a1e16; // = kolor krawędzi stolika
-  const LAMELLA_LIGHT = 0x94743f; // = kolor dywaników
+  const LAMELLA_DEPTH = footprint.depth;
+  const LAMELLA_SLAT_T = 0.08;
+  const LAMELLA_DARK = 0x2a1e16;
+  const LAMELLA_LIGHT = 0x94743f;
   for (const px of PARTITIONS) {
     for (const xDir of [-1, 1]) {
       const wallX = px + xDir * (WALL_THICKNESS / 2);
@@ -129,8 +114,6 @@ OBSTACLES.push({ x: loungeX + 1.55, z: -1.75, radius: 0.45 });
         buildLamellaJamb(scene, wallX, doorEdgeZ, zDir, xDir, LAMELLA_DEPTH, ROOM_HEIGHT, LAMELLA_SLAT_T, LAMELLA_DARK, LAMELLA_LIGHT);
       }
     }
-    // Łącznik — wewnętrzna powierzchnia framugi w grubości ściany, żeby lamele
-    // ze ścian po obu stronach wizualnie się łączyły zamiast urywać na gołym murze
     for (const zDir of [-1, 1]) {
       const doorEdgeZ = zDir * DOOR_HALF_WIDTH;
       buildLamellaReveal(scene, doorEdgeZ, px, WALL_THICKNESS, ROOM_HEIGHT, LAMELLA_SLAT_T, LAMELLA_DARK, LAMELLA_LIGHT, -zDir);
@@ -145,16 +128,11 @@ const controls = new GalleryControls(camera, renderer.domElement, scene);
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 let dwell = 0;
-const TELEPORT_DWELL = 2.2; // wydłużone (było 1.5 s) — mniej przypadkowych teleportacji
+const TELEPORT_DWELL = 2.2;
 
 const cardboard = new CardboardMode(renderer, camera);
 let inVR = false;
 
-// --- Wykrywanie urządzenia: prawdziwe WebXR "immersive-vr" praktycznie nie
-// działa już na telefonach z goglami Cardboard (przeglądarki to porzuciły —
-// patrz rozmowa), więc VR realizujemy własnym trybem (żyroskop + podział
-// ekranu). Dostępny tylko na urządzeniach mobilnych — na desktopie przycisk
-// jest wyłączony i mówi wprost, dlaczego.
 const isMobileDevice = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
 const vrBtn = document.getElementById('start-vr');
 if (!isMobileDevice) {
@@ -179,9 +157,6 @@ function updateGazeTeleport(dt) {
       if (dwell >= TELEPORT_DWELL) {
         const p = hits[0].point.clone();
         resolveCollision(p, 0.45, 1.0);
-
-        // Blokujemy teleport, jeśli droga do celu przecinałaby pełną ścianę
-        // działową (dozwolone jest tylko przejście przez otwór drzwi).
         if (!crossesSolidWall(rig.position, p, 0.45)) {
           rig.position.x = p.x;
           rig.position.z = p.z;
@@ -217,10 +192,7 @@ function updateCaption() {
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inVR) {
-    // Sanity check: wymuś kolizję w każdej klatce, na wypadek gdyby cokolwiek
-    // wypchnęło rig poza pomieszczenie (np. błąd sensora, teleport, gamepad)
     resolveCollision(rig.position, 0.45, 1.0);
-
     const gp = getActiveGamepad();
     const reticle = document.getElementById('reticle-ring');
     if (gp) {
@@ -253,6 +225,9 @@ window.addEventListener('resize', () => {
 
 // --- UI: ekran startowy ---
 function startExperience(mode) {
+  // NOWOŚĆ: Pokaż canvas metaversum po kliknięciu przycisku
+  renderer.domElement.style.display = 'block';
+  
   controls.setMode(mode);
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
@@ -271,18 +246,17 @@ if (isMobileDevice) initMobileControls(controls);
 vrBtn.addEventListener('click', async () => {
   if (vrBtn.disabled) return;
 
-  // ZAWSZE startuj w środku sali głównej, z bezpiecznym marginesem od ścian
+  // NOWOŚĆ: Pokaż canvas metaversum przy wejściu w VR
+  renderer.domElement.style.display = 'block';
+
   const vrStart = new THREE.Vector3(0, 0, 0);
   resolveCollision(vrStart, 0.45, 1.0);
   rig.position.copy(vrStart);
   rig.position.y = 0;
 
-  // Wysokość oka w VR — bez tego użytkownik leży na podłodze
   camera.position.set(0, 1.65, 0);
-
-  // Zwiększ near plane w VR — eliminuje "widzenie przez ściany" przy bliskim kontakcie
   camera.near = 0.15;
-  cardboard.updateAspect(); // poprawne proporcje (połowa ekranu na oko) od pierwszej klatki
+  cardboard.updateAspect();
 
   await cardboard.enable();
   inVR = true;
@@ -304,27 +278,7 @@ document.getElementById('exit-vr').addEventListener('click', () => {
   document.getElementById('exit-vr').classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('intro').classList.remove('hidden');
+  
+  // NOWOŚĆ: Ukryj canvas metaversum przy powrocie do menu startowego
+  renderer.domElement.style.display = 'none';
 });
-
-// --- Tło ekranu startowego: Vanta.js "fog", kolory deep violet + vibrant orange ---
-if (window.VANTA) {
-  window.VANTA.FOG({
-    el: '#vanta-bg',
-    THREE: window.THREE,
-    backgroundAlpha: 1,
-    highlightColor: 0xffe4c4, // bisque (jaśniejszy z podanych)
-    midtoneColor: 0xffdfc0,   // mieszanka obu podanych odcieni
-    lowlightColor: 0xffdab9,  // peachpuff (ciemniejszy z podanych)
-    baseColor: 0xc9a27a,      // głębszy, przygaszony odcień tej samej rodziny barw — dla kontrastu w tle
-    blurFactor: 0.57,
-    speed: 0.7,
-    zoom: 1,
-    minHeight: 200,
-    minWidth: 200,
-    scale: 2,
-    scaleMobile: 4,
-    mouseControls: true,
-    touchControls: true,
-    gyroControls: false,
-  });
-}
