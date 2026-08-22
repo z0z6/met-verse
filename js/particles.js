@@ -241,4 +241,233 @@ function generatePositions(count, shapeFn, shapeName) {
     const baseColor = new THREE.Color(Config.get('particleColor'));
     const multi = Config.get('multiColor');
 
-    // Specjalna obsługa dla vr-headset-edges - punkty wzdłuż krawęd
+    // Specjalna obsługa dla vr-headset-edges - punkty wzdłuż krawędzi
+    if (shapeName === 'vr-headset-edges') {
+        const geometries = createVRHeadsetEdgeGeometry();
+        const allEdgePoints = [];
+
+        geometries.forEach(geom => {
+            const edges = new THREE.EdgesGeometry(geom, 15);
+            const positions = edges.attributes.position;
+            
+            for (let i = 0; i < positions.count; i += 2) {
+                const p1 = new THREE.Vector3(positions.getX(i), positions.getY(i), positions.getZ(i));
+                const p2 = new THREE.Vector3(positions.getX(i+1), positions.getY(i+1), positions.getZ(i+1));
+                
+                const segments = 10;
+                for (let j = 0; j <= segments; j++) {
+                    const t = j / segments;
+                    const point = p1.clone().lerp(p2, t);
+                    
+                    const noise = 0.02;
+                    point.x += (Math.random() - 0.5) * noise;
+                    point.y += (Math.random() - 0.5) * noise;
+                    point.z += (Math.random() - 0.5) * noise;
+                    
+                    allEdgePoints.push(point);
+                }
+            }
+        });
+
+        for (let i = 0; i < count; i++) {
+            const point = allEdgePoints[Math.floor(Math.random() * allEdgePoints.length)];
+            
+            pos[i*3] = point.x;
+            pos[i*3+1] = point.y;
+            pos[i*3+2] = point.z;
+
+            if (multi) {
+                const hue = (point.y + 3) / 6;
+                const c = new THREE.Color().setHSL(hue, 0.8, 0.6);
+                colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+            } else {
+                colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
+            }
+            sizes[i] = 0.3 + Math.random() * 0.4;
+        }
+
+        geometries.forEach(g => g.dispose());
+        return { pos, colors, sizes };
+    }
+
+    // Standardowa obsługa dla innych kształtów
+    for (let i = 0; i < count; i++) {
+        const u = Math.random();
+        const v = Math.random();
+        const p = shapeFn(u, v);
+        
+        pos[i*3] = p.x + (Math.random()-0.5)*0.08;
+        pos[i*3+1] = p.y + (Math.random()-0.5)*0.08;
+        pos[i*3+2] = p.z + (Math.random()-0.5)*0.08;
+
+        if (multi) {
+            const hue = (p.y + 3) / 6;
+            const c = new THREE.Color().setHSL(hue, 0.8, 0.6);
+            colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+        } else {
+            colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
+        }
+        sizes[i] = 0.3 + Math.random() * 0.4;
+    }
+    return { pos, colors, sizes };
+}
+
+export function init(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.z = 9;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setClearColor(0x000000, 0);
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    buildGrid();
+    buildParticles();
+
+    window.addEventListener('resize', onResize);
+    window.addEventListener('configchange', onConfigChange);
+    animate();
+}
+
+function buildGrid() {
+    const geometry = new THREE.PlaneGeometry(40, 40);
+    gridMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0 },
+            uDensity: { value: Config.get('gridDensity') },
+            uThickness: { value: Config.get('gridThickness') },
+            uColor: { value: new THREE.Color(Config.get('gridColor')) },
+            uSpeed: { value: new THREE.Vector2(Config.get('gridSpeedX') / 1000, Config.get('gridSpeedY') / 1000) }
+        },
+        vertexShader: GRID_VERTEX,
+        fragmentShader: GRID_FRAGMENT,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+    gridMesh = new THREE.Mesh(geometry, gridMaterial);
+    gridMesh.position.z = -8;
+    gridMesh.visible = Config.get('gridEnabled');
+    scene.add(gridMesh);
+}
+
+function buildParticles() {
+    if (particles) { 
+        scene.remove(particles); 
+        if (geometry) geometry.dispose(); 
+        if (material) material.dispose(); 
+        particles = null; geometry = null; material = null;
+    }
+
+    const count = parseInt(Config.get('particleCount'));
+    const shape = Config.get('shape');
+    const shapeFn = SHAPES[shape] || SHAPES['sphere'];
+    const data = generatePositions(count, shapeFn, shape);
+
+    geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
+    geometry.setAttribute('customColor', new THREE.BufferAttribute(data.colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
+
+    material = new THREE.ShaderMaterial({
+        uniforms: {
+            uPixelRatio: { value: renderer.getPixelRatio() },
+            uSizeMult: { value: Config.get('particleSize') },
+            uFadeStart: { value: 4 },
+            uFadeEnd: { value: 12 }
+        },
+        vertexShader: VERTEX,
+        fragmentShader: FRAGMENT,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+
+    particles = new THREE.Points(geometry, material);
+    applyTilt();
+    applyScale();
+    scene.add(particles);
+}
+
+function applyTilt() {
+    if (!particles) return;
+    const tiltDir = Config.get('tiltDirection');
+    const tiltAngle = Config.get('tiltAngle');
+    const angle = (tiltAngle * Math.PI) / 180;
+    particles.rotation.x = 0;
+    particles.rotation.z = 0;
+    switch(tiltDir) {
+        case 'front-right': particles.rotation.z = -angle; break;
+        case 'front-left': particles.rotation.z = angle; break;
+        case 'back-right': particles.rotation.x = angle; break;
+        case 'back-left': particles.rotation.x = -angle; break;
+    }
+}
+
+function applyScale() {
+    if (!particles) return;
+    const scale = Config.get('scale');
+    particles.scale.set(scale, scale, scale);
+}
+
+function onConfigChange(e) {
+    const { key, value } = e.detail;
+    if (key === 'gridEnabled' && gridMesh) gridMesh.visible = value;
+    if (gridMaterial) {
+        if (key === 'gridDensity') gridMaterial.uniforms.uDensity.value = value;
+        if (key === 'gridThickness') gridMaterial.uniforms.uThickness.value = value;
+        if (key === 'gridColor') gridMaterial.uniforms.uColor.value = new THREE.Color(value);
+        if (key === 'gridSpeedX') gridMaterial.uniforms.uSpeed.value.x = value / 1000;
+        if (key === 'gridSpeedY') gridMaterial.uniforms.uSpeed.value.y = value / 1000;
+    }
+    if (['particleCount','shape','particleColor','multiColor'].includes(key)) buildParticles();
+    if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
+    if (key === 'scale') applyScale();
+    if (key === 'bgColor') document.body.style.background = Config.get('bgColor');
+    if (key === 'particleSize' && material) material.uniforms.uSizeMult.value = Config.get('particleSize');
+}
+
+function onResize() {
+    if (!camera || !renderer) return;
+    const container = renderer.domElement.parentElement;
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    if (material) material.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+}
+
+function animate() {
+    animId = requestAnimationFrame(animate);
+    time += 0.01;
+    if (gridMaterial && Config.get('gridEnabled')) gridMaterial.uniforms.uTime.value = time;
+    const speed = Config.get('rotationSpeed') * 0.02;
+    const dir = Config.get('rotationDirection');
+    if (particles) particles.rotation.y += speed * dir;
+    renderer.render(scene, camera);
+}
+
+export function toggleRotation() {
+    const current = Config.get('rotationSpeed');
+    Config.set('rotationSpeed', current > 0.01 ? 0 : 0.5);
+}
+export function changeDirection() {
+    Config.set('rotationDirection', Config.get('rotationDirection') * -1);
+}
+export function nextShape() {
+    const keys = Object.keys(SHAPES);
+    const curr = Config.get('shape');
+    const idx = keys.indexOf(curr);
+    const next = keys[(idx + 1) % keys.length];
+    Config.set('shape', next);
+}
+export function destroy() {
+    if (animId) cancelAnimationFrame(animId);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('configchange', onConfigChange);
+    if (renderer) renderer.dispose();
+}
