@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administracyjny</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .admin-layout { display: flex; height: 100vh; }
+        .admin-sidebar {
+            width: 380px;
+            background: rgba(20,20,20,0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            overflow-y: auto;
+            padding: 24px;
+            color: #fff;
+            z-index: 10;
+        }
+        .admin-preview {
+            flex: 1;
+            position: relative;
+            background: transparent;
+        }
+        .admin-preview #canvas-container {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+        }
+        .control-group {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        input[type="color"] {
+            width: 48px; height: 32px; border: none; border-radius: 6px; cursor: pointer;
+            background: none;
+        }
+        input[type="range"] {
+            flex: 1; accent-color: #0a84ff;
+        }
+        select {
+            width: 100%; padding: 8px 10px; border-radius: 8px;
+            background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15);
+        }
+        .toggle-switch {
+            position: relative; width: 48px; height: 28px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #39393d; border-radius: 28px; transition: .3s;
+        }
+        .toggle-slider:before {
+            position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px;
+            background-color: white; border-radius: 50%; transition: .3s;
+        }
+        input:checked + .toggle-slider { background-color: #34c759; }
+        input:checked + .toggle-slider:before { transform: translateX(20px); }
+        .value-badge {
+            background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;
+            font-size: 12px; min-width: 36px; text-align: center;
+        }
+        .admin-title {
+            font-size: 20px; font-weight: 600; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .btn-export, .btn-import {
+            width: 100%; padding: 10px; border-radius: 10px; border: none;
+            font-weight: 500; cursor: pointer; margin-top: 8px;
+        }
+        .btn-export { background: #0a84ff; color: white; }
+        .btn-import { background: rgba(255,255,255,0.1); color: white; }
+        .glass-preview-panel {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 5;
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <div class="admin-title">⚙️ Panel Administracyjny</div>
+
+            <div class="control-group">
+                <label>Kolor tła</label>
+                <div class="control-row">
+                    <input type="color" id="bgColor" value="#050505">
+                    <span class="value-badge" id="bgColorVal">#050505</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Kolorystyka punktów</label>
+                <div class="control-row">
+                    <span>Multikolor</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="multiColorToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="control-row" id="monoColorRow">
+                    <input type="color" id="particleColor" value="#ffffff">
+                    <span class="value-badge" id="particleColorVal">#ffffff</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Kształt (Presety)</label>
+                <select id="shapeSelect">
+                    <option value="sphere">Pełna sfera</option>
+                    <option value="ellipsoid">Elipsoida</option>
+                    <option value="torus">Torus</option>
+                    <option value="wave1">Falista sfera 1</option>
+                    <option value="wave2">Falista sfera 2</option>
+                    <option value="wave3">Falista sfera 3</option>
+                    <option value="wave4">Fraktalna sfera 1</option>
+                    <option value="wave5">Fraktalna sfera 2</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Kierunek wychylenia</label>
+                <select id="tiltSelect">
+                    <option value="front-right">Góra → Prawo na widza</option>
+                    <option value="front-left">Góra → Lewo na widza</option>
+                    <option value="back-right">Góra → Prawo od widza</option>
+                    <option value="back-left">Góra → Lewo od widza</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Kąt wychylenia</label>
+                <div class="control-row">
+                    <span>Kąt</span>
+                    <input type="range" id="tiltAngleRange" min="0" max="90" value="45">
+                    <span class="value-badge" id="tiltAngleVal">45°</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Skala (powiększenie)</label>
+                <div class="control-row">
+                    <span>Rozmiar</span>
+                    <input type="range" id="scaleRange" min="50" max="300" value="100">
+                    <span class="value-badge" id="scaleVal">1.00x</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Rotacja</label>
+                <div class="control-row">
+                    <span>Kierunek</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="directionToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span id="dirLabel">Prawo</span>
+                </div>
+                <div class="control-row">
+                    <span>Prędkość</span>
+                    <input type="range" id="speedRange" min="0" max="200" value="50">
+                    <span class="value-badge" id="speedVal">0.50</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Gęstość i rozmiar</label>
+                <div class="control-row">
+                    <span>Ilość</span>
+                    <input type="range" id="countRange" min="3000" max="100000" step="1000" value="75000">
+                    <span class="value-badge" id="countVal">75000</span>
+                </div>
+                <div class="control-row">
+                    <span>Rozmiar</span>
+                    <input type="range" id="sizeRange" min="1" max="100" value="20">
+                    <span class="value-badge" id="sizeVal">0.20</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Siatka w tle</label>
+                <div class="control-row">
+                    <span>Włącz siatkę</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="gridEnabledToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="control-row">
+                    <input type="color" id="gridColor" value="#1a4d6e">
+                    <span class="value-badge" id="gridColorVal">#1a4d6e</span>
+                </div>
+                <div class="control-row">
+                    <span>Zagęszczenie</span>
+                    <input type="range" id="gridDensity" min="5" max="100" value="20">
+                    <span class="value-badge" id="gridDensityVal">20</span>
+                </div>
+                <div class="control-row">
+                    <span>Grubość linii</span>
+                    <input type="range" id="gridThickness" min="1" max="50" value="15">
+                    <span class="value-badge" id="gridThicknessVal">0.15</span>
+                </div>
+                <div class="control-row">
+                    <span>Prędkość X</span>
+                    <input type="range" id="gridSpeedX" min="-100" max="100" value="10">
+                    <span class="value-badge" id="gridSpeedXVal">0.10</span>
+                </div>
+                <div class="control-row">
+                    <span>Prędkość Y</span>
+                    <input type="range" id="gridSpeedY" min="-100" max="100" value="0">
+                    <span class="value-badge" id="gridSpeedYVal">0.00</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Panel Glass</label>
+                <div class="control-row">
+                    <span>Przezroczystość</span>
+                    <input type="range" id="glassOpacity" min="0" max="100" value="15">
+                    <span class="value-badge" id="glassOpVal">0.15</span>
+                </div>
+                <div class="control-row">
+                    <span>Rozmycie</span>
+                    <input type="range" id="glassBlur" min="0" max="40" value="20">
+                    <span class="value-badge" id="glassBlurVal">20px</span>
+                </div>
+            </div>
+
+            <button class="btn-export" id="exportBtn">📥 Eksportuj JSON</button>
+            <button class="btn-import" id="importBtn">📤 Importuj JSON</button>
+            <input type="file" id="importFile" accept=".json" style="display:none">
+            <button class="btn-import" onclick="location.href='index.html'" style="margin-top:16px">⬅️ Wróć do strony</button>
+        </aside>
+
+        <main class="admin-preview">
+            <div id="canvas-container"></div>
+            <div class="glass-panel glass-preview-panel" id="glassPanel">
+                <div class="glass-header"><h2>Podgląd</h2></div>
+                <div class="glass-content">
+                    <p class="glass-desc">Zmiany są widoczne natychmiast</p>
+                    <div class="ios-grid">
+                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-settings">⚙️</div><span>Test</span></button>
+                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-play">▶️</div><span>Test</span></button>
+                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-refresh">🔄</div><span>Test</span></button>
+                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-shapes">🔷</div><span>Test</span></button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/particles.js"></script>
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>
