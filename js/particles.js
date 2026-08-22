@@ -90,6 +90,62 @@ const SHAPES = {
         const R = 2.5, r = 1;
         return { x: (R + r * Math.cos(phi)) * Math.cos(theta), y: r * Math.sin(phi), z: (R + r * Math.cos(phi)) * Math.sin(theta) };
     },
+    'vr-headset': (u, v) => {
+        // Kształt gogli VR - korpus + pasek
+        // Podział: 0-0.7 to korpus gogli, 0.7-1.0 to pasek
+        
+        if (u < 0.7) {
+            // Korpus gogli (przednia część)
+            const theta = (u / 0.7) * Math.PI * 2;
+            const phi = v * Math.PI;
+            
+            // Spłaszczona elipsoida - korpus gogli
+            const width = 2.8;   // szerokość
+            const height = 1.8;  // wysokość
+            const depth = 1.2;   // głębokość
+            
+            // Zaokrąglony prostokątny kształt
+            const x = width * Math.sin(phi) * Math.cos(theta);
+            const y = height * Math.cos(phi);
+            const z = depth * Math.sin(phi) * Math.sin(theta);
+            
+            // Lekkie wybrzuszenie z przodu (gdzie są soczewki)
+            const frontBulge = 0.3 * Math.cos(phi * Math.PI);
+            
+            return {
+                x: x,
+                y: y,
+                z: z + frontBulge
+            };
+        } else {
+            // Pasek na głowę (head strap)
+            const strapProgress = (u - 0.7) / 0.3; // 0 do 1
+            const theta = strapProgress * Math.PI * 2;
+            
+            // Łuk przechodzący nad głową
+            const strapRadius = 2.2;
+            const strapThickness = 0.35;
+            const phi = v * Math.PI;
+            
+            // Pozycja łuku - przechodzi nad górą gogli
+            const arcAngle = Math.PI + (1 - Math.abs(2 * strapProgress - 1)) * Math.PI * 0.3;
+            
+            const x = strapRadius * Math.cos(theta) * Math.sin(arcAngle);
+            const y = strapRadius * Math.cos(arcAngle) + 1.5; // wyżej nad goglami
+            const z = strapRadius * Math.sin(theta) * Math.sin(arcAngle);
+            
+            // Dodaj grubość paska
+            const thicknessX = strapThickness * (Math.random() - 0.5);
+            const thicknessY = strapThickness * (Math.random() - 0.5);
+            const thicknessZ = strapThickness * (Math.random() - 0.5);
+            
+            return {
+                x: x + thicknessX,
+                y: y + thicknessY,
+                z: z + thicknessZ
+            };
+        }
+    },
     'wave1': (u, v) => {
         const theta = u * Math.PI * 2;
         const phi = v * Math.PI;
