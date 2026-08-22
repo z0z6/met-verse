@@ -68,102 +68,177 @@ let gridMesh, gridMaterial;
 let animId;
 let time = 0;
 
-// Funkcja tworząca geometrię gogli VR z krawędziami
-function createVRHeadsetEdgeGeometry() {
-    const geometries = [];
+// ---------- Pomocnicze generatory konturów (gogle VR) ----------
 
-    // Główny korpus - zaokrąglony prostokąt
-    const bodyShape = new THREE.Shape();
-    const w = 3.6, h = 2.2, r = 0.4;
-    bodyShape.moveTo(-w/2 + r, -h/2);
-    bodyShape.lineTo(w/2 - r, -h/2);
-    bodyShape.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + r);
-    bodyShape.lineTo(w/2, h/2 - r);
-    bodyShape.quadraticCurveTo(w/2, h/2, w/2 - r, h/2);
-    bodyShape.lineTo(-w/2 + r, h/2);
-    bodyShape.quadraticCurveTo(-w/2, h/2, -w/2, h/2 - r);
-    bodyShape.lineTo(-w/2, -h/2 + r);
-    bodyShape.quadraticCurveTo(-w/2, -h/2, -w/2 + r, -h/2);
+// Zwraca zamkniętą polilinię zaokrąglonego prostokąta w płaszczyźnie XY (z=0)
+function roundedRectPoints(w, h, r, segsPerCorner = 8) {
+    const shape = new THREE.Shape();
+    const x = -w / 2, y = -h / 2;
+    shape.moveTo(x + r, y);
+    shape.lineTo(x + w - r, y);
+    shape.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false);
+    shape.lineTo(x + w, y + h - r);
+    shape.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2, false);
+    shape.lineTo(x + r, y + h);
+    shape.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI, false);
+    shape.lineTo(x, y + r);
+    shape.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5, false);
+    const pts2D = shape.getPoints(segsPerCorner);
+    pts2D.push(pts2D[0].clone());
+    return pts2D.map(p => new THREE.Vector3(p.x, p.y, 0));
+}
 
-    const extrudeSettings = { depth: 1.6, bevelEnabled: true, bevelSegments: 3, steps: 2, bevelSize: 0.08, bevelThickness: 0.08 };
-    const bodyGeometry = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings);
-    const body = new THREE.Mesh(bodyGeometry);
-    body.rotation.y = Math.PI / 2;
-    body.position.set(0, 0, -0.8);
-    body.updateMatrix();
-    geometries.push(bodyGeometry.applyMatrix4(body.matrix));
+// Punkty okręgu w wybranej płaszczyźnie
+function circlePoints(radius, segs, plane = 'xy') {
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+        const a = (i / segs) * Math.PI * 2;
+        const c = Math.cos(a) * radius, s = Math.sin(a) * radius;
+        if (plane === 'xy') pts.push(new THREE.Vector3(c, s, 0));
+        else if (plane === 'yz') pts.push(new THREE.Vector3(0, c, s));
+        else pts.push(new THREE.Vector3(c, 0, s));
+    }
+    return pts;
+}
 
-    // Przedni panel
-    const frontShape = new THREE.Shape();
-    const fw = 3.3, fh = 1.9, fr = 0.3;
-    frontShape.moveTo(-fw/2 + fr, -fh/2);
-    frontShape.lineTo(fw/2 - fr, -fh/2);
-    frontShape.quadraticCurveTo(fw/2, -fh/2, fw/2, -fh/2 + fr);
-    frontShape.lineTo(fw/2, fh/2 - fr);
-    frontShape.quadraticCurveTo(fw/2, fh/2, fw/2 - fr, fh/2);
-    frontShape.lineTo(-fw/2 + fr, fh/2);
-    frontShape.quadraticCurveTo(-fw/2, fh/2, -fw/2, fh/2 - fr);
-    frontShape.lineTo(-fw/2, -fh/2 + fr);
-    frontShape.quadraticCurveTo(-fw/2, -fh/2, -fw/2 + fr, -fh/2);
+// Zwraca zestaw polilinii tworzących "klatkę" zaokrąglonego prostopadłościanu:
+// przednia i tylna ścianka + linie łączące je na obwodzie (efekt bryły 3D)
+function roundedBoxWireframe(center, size, axis, radius, segsPerCorner = 6, cageLines = 8) {
+    let w, h, mapTo3D;
+    if (axis === 'x') {
+        w = size.y; h = size.z;
+        mapTo3D = (p, off) => new THREE.Vector3(center.x + off, center.y + p.x, center.z + p.y);
+    } else if (axis === 'y') {
+        w = size.x; h = size.z;
+        mapTo3D = (p, off) => new THREE.Vector3(center.x + p.x, center.y + off, center.z + p.y);
+    } else {
+        w = size.x; h = size.y;
+        mapTo3D = (p, off) => new THREE.Vector3(center.x + p.x, center.y + p.y, center.z + off);
+    }
+    const flat = roundedRectPoints(w, h, radius, segsPerCorner);
+    const axisSize = axis === 'x' ? size.x : axis === 'y' ? size.y : size.z;
+    const half = axisSize / 2;
+    const frontLoop = flat.map(p => mapTo3D(p, -half));
+    const backLoop = flat.map(p => mapTo3D(p, half));
+    const polylines = [frontLoop, backLoop];
+    const n = flat.length - 1;
+    const step = Math.max(1, Math.floor(n / cageLines));
+    for (let i = 0; i < n; i += step) {
+        polylines.push([frontLoop[i], backLoop[i]]);
+    }
+    return polylines;
+}
 
-    const frontGeometry = new THREE.ExtrudeGeometry(frontShape, { depth: 0.1, bevelEnabled: false });
-    const front = new THREE.Mesh(frontGeometry);
-    front.position.set(0, 0, 0.8);
-    front.updateMatrix();
-    geometries.push(frontGeometry.applyMatrix4(front.matrix));
+// Próbkuje `count` punktów wzdłuż zestawu polilinii proporcjonalnie do ich
+// długości - dzięki temu gęstość punktów wiernie odwzorowuje kontur
+// (długie krawędzie dostają proporcjonalnie więcej punktów, krótkie mniej,
+// zamiast losowego rozrzutu "po równo na krawędź" jak wcześniej).
+function sampleWeightedPoints(polylines, count) {
+    const segStarts = [];
+    const segPoints = [];
+    let total = 0;
+    polylines.forEach(pts => {
+        for (let i = 0; i < pts.length - 1; i++) {
+            const len = pts[i].distanceTo(pts[i + 1]);
+            if (len <= 1e-6) continue;
+            total += len;
+            segStarts.push(total);
+            segPoints.push([pts[i], pts[i + 1]]);
+        }
+    });
+    if (!segPoints.length) return [];
+    const result = [];
+    for (let i = 0; i < count; i++) {
+        const r = Math.random() * total;
+        let lo = 0, hi = segStarts.length - 1;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (segStarts[mid] < r) lo = mid + 1; else hi = mid;
+        }
+        const segStart = lo === 0 ? 0 : segStarts[lo - 1];
+        const segLen = segStarts[lo] - segStart;
+        const t = segLen > 0 ? (r - segStart) / segLen : 0.5;
+        const [p1, p2] = segPoints[lo];
+        result.push(p1.clone().lerp(p2, t));
+    }
+    return result;
+}
 
-    // Dwie soczewki
-    const lensGeometry = new THREE.BoxGeometry(1.1, 1.3, 0.5);
-    const leftLens = new THREE.Mesh(lensGeometry);
-    leftLens.position.set(-0.9, 0, 1.1);
-    leftLens.updateMatrix();
-    geometries.push(lensGeometry.applyMatrix4(leftLens.matrix));
+// Buduje pełen kontur gogli VR (na podstawie zdjęć referencyjnych):
+// korpus/wizjer, szew na przedniej ściance, czujniki, przycisk boczny,
+// ramię łączące, moduł z pokrętłem po lewej stronie oraz pałąk na górze.
+function createVRHeadsetPolylines() {
+    const polylines = [];
 
-    const rightLens = new THREE.Mesh(lensGeometry);
-    rightLens.position.set(0.9, 0, 1.1);
-    rightLens.updateMatrix();
-    geometries.push(lensGeometry.applyMatrix4(rightLens.matrix));
+    // --- Główny korpus / wizjer ---
+    const visorSize = { x: 3.4, y: 2.15, z: 1.7 };
+    const visorCenter = { x: 0, y: 0, z: 0 };
+    polylines.push(...roundedBoxWireframe(visorCenter, visorSize, 'z', 0.5, 8, 10));
 
-    // Górny uchwyt
-    const handleCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-1.5, 1.1, -0.3),
-        new THREE.Vector3(-0.8, 1.8, -0.5),
-        new THREE.Vector3(0, 2.0, -0.6),
-        new THREE.Vector3(0.8, 1.8, -0.5),
-        new THREE.Vector3(1.5, 1.1, -0.3)
+    // --- Szew między obudową a maską na przedniej ściance ---
+    const seam = roundedRectPoints(visorSize.x - 0.32, visorSize.y - 0.32, 0.38, 8)
+        .map(p => new THREE.Vector3(p.x, p.y, visorSize.z / 2 + 0.01));
+    polylines.push(seam);
+
+    // --- Czujniki / kamery na przedniej ściance ---
+    const sensors = [
+        { x: -1.35, y: 0.62 }, { x: 1.48, y: 0.52 },
+        { x: 1.55, y: -0.08 }, { x: 1.32, y: -0.75 }
+    ];
+    sensors.forEach(s => {
+        polylines.push(circlePoints(0.08, 10, 'xy')
+            .map(p => new THREE.Vector3(p.x + s.x, p.y + s.y, visorSize.z / 2 + 0.02)));
+    });
+
+    // --- Przycisk / gniazdo z prawej strony ---
+    polylines.push(roundedRectPoints(0.16, 0.55, 0.06, 4)
+        .map(p => new THREE.Vector3(visorSize.x / 2 + 0.01, p.y + 0.15, p.x + 0.2)));
+    polylines.push(circlePoints(0.09, 10, 'yz')
+        .map(p => new THREE.Vector3(visorSize.x / 2 + 0.01, p.y - 0.55, p.z + 0.35)));
+
+    // --- Ramię łączące korpus z modułem po lewej ---
+    const armLength = 1.35;
+    const armCenter = { x: -visorSize.x / 2 - armLength / 2, y: -0.05, z: 0 };
+    polylines.push(...roundedBoxWireframe(armCenter, { x: armLength, y: 0.55, z: 0.36 }, 'x', 0.16, 4, 6));
+
+    // --- Moduł (obudowa pokrętła) po lewej stronie ---
+    const moduleCenter = { x: armCenter.x - armLength / 2 - 0.24, y: 0, z: 0 };
+    const moduleSize = { x: 0.46, y: 0.95, z: 0.85 };
+    polylines.push(...roundedBoxWireframe(moduleCenter, moduleSize, 'x', 0.2, 6, 8));
+
+    // --- Pokrętło (dwa współśrodkowe okręgi) na zewnętrznej ściance modułu ---
+    const dialX = moduleCenter.x - moduleSize.x / 2 - 0.01;
+    polylines.push(circlePoints(0.36, 20, 'yz')
+        .map(p => new THREE.Vector3(dialX, p.y + moduleCenter.y, p.z + moduleCenter.z)));
+    polylines.push(circlePoints(0.15, 14, 'yz')
+        .map(p => new THREE.Vector3(dialX, p.y + moduleCenter.y, p.z + moduleCenter.z)));
+
+    // --- Pałąk na górze (wewnętrzna i zewnętrzna krawędź opaski + "szycie") ---
+    const strapLeft = new THREE.Vector3(moduleCenter.x, moduleCenter.y + 0.56, moduleCenter.z - 0.05);
+    const strapRight = new THREE.Vector3(1.1, 1.05, -0.55);
+    const innerCurve = new THREE.CatmullRomCurve3([
+        strapLeft,
+        new THREE.Vector3(moduleCenter.x * 0.55, 1.62, -0.35),
+        new THREE.Vector3(0.05, 1.95, -0.6),
+        new THREE.Vector3(0.75, 1.68, -0.58),
+        strapRight
     ]);
-    const handleGeometry = new THREE.TubeGeometry(handleCurve, 32, 0.2, 12, false);
-    geometries.push(handleGeometry);
-
-    // Boczne ramiona
-    const leftArmCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-1.8, 0.3, 0),
-        new THREE.Vector3(-2.3, 0.2, -0.5),
-        new THREE.Vector3(-2.4, 0.1, -1.2)
+    const outerCurve = new THREE.CatmullRomCurve3([
+        strapLeft.clone().add(new THREE.Vector3(0, 0.32, -0.02)),
+        new THREE.Vector3(moduleCenter.x * 0.55, 1.92, -0.4),
+        new THREE.Vector3(0.05, 2.25, -0.65),
+        new THREE.Vector3(0.75, 1.98, -0.62),
+        strapRight.clone().add(new THREE.Vector3(0, 0.3, -0.02))
     ]);
-    const leftArmGeometry = new THREE.TubeGeometry(leftArmCurve, 20, 0.15, 8, false);
-    geometries.push(leftArmGeometry);
+    const strapSegs = 28;
+    const innerPts = innerCurve.getPoints(strapSegs);
+    const outerPts = outerCurve.getPoints(strapSegs);
+    polylines.push(innerPts, outerPts);
+    for (let i = 0; i <= strapSegs; i += 4) {
+        polylines.push([innerPts[i], outerPts[i]]);
+    }
 
-    const rightArmCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(1.8, 0.3, 0),
-        new THREE.Vector3(2.3, 0.2, -0.5),
-        new THREE.Vector3(2.4, 0.1, -1.2)
-    ]);
-    const rightArmGeometry = new THREE.TubeGeometry(rightArmCurve, 20, 0.15, 8, false);
-    geometries.push(rightArmGeometry);
-
-    // Tylny pasek
-    const backStrapCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-2.4, 0.1, -1.2),
-        new THREE.Vector3(-2.3, -0.3, -1.5),
-        new THREE.Vector3(0, -0.5, -1.7),
-        new THREE.Vector3(2.3, -0.3, -1.5),
-        new THREE.Vector3(2.4, 0.1, -1.2)
-    ]);
-    const backStrapGeometry = new THREE.TubeGeometry(backStrapCurve, 32, 0.12, 8, false);
-    geometries.push(backStrapGeometry);
-
-    return geometries;
+    return polylines;
 }
 
 const SHAPES = {
@@ -241,43 +316,22 @@ function generatePositions(count, shapeFn, shapeName) {
     const baseColor = new THREE.Color(Config.get('particleColor'));
     const multi = Config.get('multiColor');
 
-    // Specjalna obsługa dla vr-headset-edges - punkty wzdłuż krawędzi
+    // Specjalna obsługa dla vr-headset-edges - punkty wzdłuż konturu gogli,
+    // próbkowane proporcjonalnie do długości odcinków (gęstość = wierność kształtu)
     if (shapeName === 'vr-headset-edges') {
-        const geometries = createVRHeadsetEdgeGeometry();
-        const allEdgePoints = [];
-
-        geometries.forEach(geom => {
-            const edges = new THREE.EdgesGeometry(geom, 15);
-            const positions = edges.attributes.position;
-            
-            for (let i = 0; i < positions.count; i += 2) {
-                const p1 = new THREE.Vector3(positions.getX(i), positions.getY(i), positions.getZ(i));
-                const p2 = new THREE.Vector3(positions.getX(i+1), positions.getY(i+1), positions.getZ(i+1));
-                
-                const segments = 10;
-                for (let j = 0; j <= segments; j++) {
-                    const t = j / segments;
-                    const point = p1.clone().lerp(p2, t);
-                    
-                    const noise = 0.02;
-                    point.x += (Math.random() - 0.5) * noise;
-                    point.y += (Math.random() - 0.5) * noise;
-                    point.z += (Math.random() - 0.5) * noise;
-                    
-                    allEdgePoints.push(point);
-                }
-            }
-        });
+        const polylines = createVRHeadsetPolylines();
+        const sampled = sampleWeightedPoints(polylines, count);
+        const noise = 0.015;
 
         for (let i = 0; i < count; i++) {
-            const point = allEdgePoints[Math.floor(Math.random() * allEdgePoints.length)];
-            
-            pos[i*3] = point.x;
-            pos[i*3+1] = point.y;
-            pos[i*3+2] = point.z;
+            const point = sampled[i] || new THREE.Vector3();
+
+            pos[i*3]   = point.x + (Math.random() - 0.5) * noise;
+            pos[i*3+1] = point.y + (Math.random() - 0.5) * noise;
+            pos[i*3+2] = point.z + (Math.random() - 0.5) * noise;
 
             if (multi) {
-                const hue = (point.y + 3) / 6;
+                const hue = THREE.MathUtils.clamp((point.y + 1.8) / 3.6, 0, 1);
                 const c = new THREE.Color().setHSL(hue, 0.8, 0.6);
                 colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
             } else {
@@ -286,7 +340,6 @@ function generatePositions(count, shapeFn, shapeName) {
             sizes[i] = 0.3 + Math.random() * 0.4;
         }
 
-        geometries.forEach(g => g.dispose());
         return { pos, colors, sizes };
     }
 
