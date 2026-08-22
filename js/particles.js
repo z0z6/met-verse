@@ -68,6 +68,104 @@ let gridMesh, gridMaterial;
 let animId;
 let time = 0;
 
+// Funkcja tworząca geometrię gogli VR z krawędziami
+function createVRHeadsetEdgeGeometry() {
+    const geometries = [];
+
+    // Główny korpus - zaokrąglony prostokąt
+    const bodyShape = new THREE.Shape();
+    const w = 3.6, h = 2.2, r = 0.4;
+    bodyShape.moveTo(-w/2 + r, -h/2);
+    bodyShape.lineTo(w/2 - r, -h/2);
+    bodyShape.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + r);
+    bodyShape.lineTo(w/2, h/2 - r);
+    bodyShape.quadraticCurveTo(w/2, h/2, w/2 - r, h/2);
+    bodyShape.lineTo(-w/2 + r, h/2);
+    bodyShape.quadraticCurveTo(-w/2, h/2, -w/2, h/2 - r);
+    bodyShape.lineTo(-w/2, -h/2 + r);
+    bodyShape.quadraticCurveTo(-w/2, -h/2, -w/2 + r, -h/2);
+
+    const extrudeSettings = { depth: 1.6, bevelEnabled: true, bevelSegments: 3, steps: 2, bevelSize: 0.08, bevelThickness: 0.08 };
+    const bodyGeometry = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings);
+    const body = new THREE.Mesh(bodyGeometry);
+    body.rotation.y = Math.PI / 2;
+    body.position.set(0, 0, -0.8);
+    body.updateMatrix();
+    geometries.push(bodyGeometry.applyMatrix4(body.matrix));
+
+    // Przedni panel
+    const frontShape = new THREE.Shape();
+    const fw = 3.3, fh = 1.9, fr = 0.3;
+    frontShape.moveTo(-fw/2 + fr, -fh/2);
+    frontShape.lineTo(fw/2 - fr, -fh/2);
+    frontShape.quadraticCurveTo(fw/2, -fh/2, fw/2, -fh/2 + fr);
+    frontShape.lineTo(fw/2, fh/2 - fr);
+    frontShape.quadraticCurveTo(fw/2, fh/2, fw/2 - fr, fh/2);
+    frontShape.lineTo(-fw/2 + fr, fh/2);
+    frontShape.quadraticCurveTo(-fw/2, fh/2, -fw/2, fh/2 - fr);
+    frontShape.lineTo(-fw/2, -fh/2 + fr);
+    frontShape.quadraticCurveTo(-fw/2, -fh/2, -fw/2 + fr, -fh/2);
+
+    const frontGeometry = new THREE.ExtrudeGeometry(frontShape, { depth: 0.1, bevelEnabled: false });
+    const front = new THREE.Mesh(frontGeometry);
+    front.position.set(0, 0, 0.8);
+    front.updateMatrix();
+    geometries.push(frontGeometry.applyMatrix4(front.matrix));
+
+    // Dwie soczewki
+    const lensGeometry = new THREE.BoxGeometry(1.1, 1.3, 0.5);
+    const leftLens = new THREE.Mesh(lensGeometry);
+    leftLens.position.set(-0.9, 0, 1.1);
+    leftLens.updateMatrix();
+    geometries.push(lensGeometry.applyMatrix4(leftLens.matrix));
+
+    const rightLens = new THREE.Mesh(lensGeometry);
+    rightLens.position.set(0.9, 0, 1.1);
+    rightLens.updateMatrix();
+    geometries.push(lensGeometry.applyMatrix4(rightLens.matrix));
+
+    // Górny uchwyt
+    const handleCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.5, 1.1, -0.3),
+        new THREE.Vector3(-0.8, 1.8, -0.5),
+        new THREE.Vector3(0, 2.0, -0.6),
+        new THREE.Vector3(0.8, 1.8, -0.5),
+        new THREE.Vector3(1.5, 1.1, -0.3)
+    ]);
+    const handleGeometry = new THREE.TubeGeometry(handleCurve, 32, 0.2, 12, false);
+    geometries.push(handleGeometry);
+
+    // Boczne ramiona
+    const leftArmCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.8, 0.3, 0),
+        new THREE.Vector3(-2.3, 0.2, -0.5),
+        new THREE.Vector3(-2.4, 0.1, -1.2)
+    ]);
+    const leftArmGeometry = new THREE.TubeGeometry(leftArmCurve, 20, 0.15, 8, false);
+    geometries.push(leftArmGeometry);
+
+    const rightArmCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(1.8, 0.3, 0),
+        new THREE.Vector3(2.3, 0.2, -0.5),
+        new THREE.Vector3(2.4, 0.1, -1.2)
+    ]);
+    const rightArmGeometry = new THREE.TubeGeometry(rightArmCurve, 20, 0.15, 8, false);
+    geometries.push(rightArmGeometry);
+
+    // Tylny pasek
+    const backStrapCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-2.4, 0.1, -1.2),
+        new THREE.Vector3(-2.3, -0.3, -1.5),
+        new THREE.Vector3(0, -0.5, -1.7),
+        new THREE.Vector3(2.3, -0.3, -1.5),
+        new THREE.Vector3(2.4, 0.1, -1.2)
+    ]);
+    const backStrapGeometry = new THREE.TubeGeometry(backStrapCurve, 32, 0.12, 8, false);
+    geometries.push(backStrapGeometry);
+
+    return geometries;
+}
+
 const SHAPES = {
     'sphere': (u, v) => {
         const theta = u * Math.PI * 2;
@@ -86,82 +184,8 @@ const SHAPES = {
         const R = 2.5, r = 1;
         return { x: (R + r * Math.cos(phi)) * Math.cos(theta), y: r * Math.sin(phi), z: (R + r * Math.cos(phi)) * Math.sin(theta) };
     },
-    'vr-headset': (u, v) => {
-        // u: 0.0 do 1.0 (obwód, 0.5 to środek przodu)
-        // v: 0.0 do 1.0 (góra do dołu)
-
-        let isFront = u > 0.35 && u < 0.65;
-        let isLeftSide = u >= 0.2 && u <= 0.35;
-        let isRightSide = u >= 0.65 && u <= 0.8;
-        
-        let x, y, z, localU, side;
-
-        if (isFront) {
-            localU = (u - 0.35) / 0.3; // 0 do 1 na przodzie
-            side = u < 0.5 ? -1 : 1;
-
-            let width = 3.4;
-            let height = 2.2;
-            let depth = 1.3;
-
-            let angleX = (localU - 0.5) * Math.PI * 0.6;
-            x = (u - 0.5) * 3.2;
-            let angleY = (v - 0.5) * Math.PI * 0.8;
-            y = height * Math.cos(angleY) * 0.85;
-            z = depth * Math.cos(angleX) * Math.cos(angleY) * 0.6;
-
-            // Wypukłości na soczewki (dwie oddzielne)
-            let eyeSep = 0.9;
-            let distToLeftEye = Math.abs(x + eyeSep);
-            let distToRightEye = Math.abs(x - eyeSep);
-            let bulge = 0;
-            if (distToLeftEye < 0.8) bulge = Math.max(0, 0.5 * (1 - distToLeftEye / 0.8));
-            if (distToRightEye < 0.8) bulge = Math.max(0, 0.5 * (1 - distToRightEye / 0.8));
-            z += bulge * Math.cos(angleY);
-
-        } else if (isLeftSide || isRightSide) {
-            side = isLeftSide ? -1 : 1;
-            localU = isLeftSide ? (0.35 - u) / 0.15 : (u - 0.65) / 0.15; // 0 przy przodzie, 1 przy tyle
-
-            let startX = side * 1.6;
-            let endX = side * 2.6;
-            x = startX + (endX - startX) * localU;
-
-            let angleY = (v - 0.5) * Math.PI * 0.8;
-            y = 2.0 * Math.cos(angleY) * 0.85 - (localU * 0.4);
-
-            let curveZ = 1.0 * Math.sin(localU * Math.PI * 0.5);
-            z = (1.3 * (1 - localU) + curveZ) * Math.cos(angleY) * 0.6;
-
-        } else {
-            // Tylny pasek
-            localU = u < 0.2 ? u / 0.2 : (1 - u) / 0.2; // 0 przy bokach, 1 na środku tyłu
-            side = u < 0.5 ? -1 : 1;
-
-            let startX = side * 2.6;
-            x = startX + (0 - startX) * localU;
-
-            let strapHeight = 0.6;
-            let centerY = 0.2;
-            y = centerY + (v - 0.5) * strapHeight * 1.5;
-
-            // Spłaszczenie do formy paska
-            if (Math.abs(y - centerY) > strapHeight / 2) {
-                let overflow = Math.abs(y - centerY) - strapHeight / 2;
-                y = centerY + Math.sign(y - centerY) * (strapHeight / 2 + overflow * 0.1);
-            }
-
-            let angleBack = localU * Math.PI * 0.5;
-            z = 2.8 * Math.cos(angleBack) * 0.5;
-        }
-
-        // Delikatny szum dla naturalnego wyglądu chmury punktów
-        let noise = 0.06;
-        return {
-            x: x + (Math.random() - 0.5) * noise,
-            y: y + (Math.random() - 0.5) * noise,
-            z: z + (Math.random() - 0.5) * noise
-        };
+    'vr-headset-edges': (u, v, geometry) => {
+        return null; // Placeholder - specjalna obsługa
     },
     'wave1': (u, v) => {
         const theta = u * Math.PI * 2;
@@ -210,190 +234,11 @@ const SHAPES = {
     }
 };
 
-function generatePositions(count, shapeFn) {
+function generatePositions(count, shapeFn, shapeName) {
     const pos = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const baseColor = new THREE.Color(Config.get('particleColor'));
     const multi = Config.get('multiColor');
 
-    for (let i = 0; i < count; i++) {
-        const u = Math.random();
-        const v = Math.random();
-        const p = shapeFn(u, v);
-        
-        pos[i*3] = p.x + (Math.random()-0.5)*0.08;
-        pos[i*3+1] = p.y + (Math.random()-0.5)*0.08;
-        pos[i*3+2] = p.z + (Math.random()-0.5)*0.08;
-
-        if (multi) {
-            const hue = (p.y + 3) / 6;
-            const c = new THREE.Color().setHSL(hue, 0.8, 0.6);
-            colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
-        } else {
-            colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
-        }
-        sizes[i] = 0.3 + Math.random() * 0.4;
-    }
-    return { pos, colors, sizes };
-}
-
-export function init(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.z = 9;
-
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setClearColor(0x000000, 0);
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
-
-    buildGrid();
-    buildParticles();
-
-    window.addEventListener('resize', onResize);
-    window.addEventListener('configchange', onConfigChange);
-    animate();
-}
-
-function buildGrid() {
-    const geometry = new THREE.PlaneGeometry(40, 40);
-    gridMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: 0 },
-            uDensity: { value: Config.get('gridDensity') },
-            uThickness: { value: Config.get('gridThickness') },
-            uColor: { value: new THREE.Color(Config.get('gridColor')) },
-            uSpeed: { value: new THREE.Vector2(Config.get('gridSpeedX') / 1000, Config.get('gridSpeedY') / 1000) }
-        },
-        vertexShader: GRID_VERTEX,
-        fragmentShader: GRID_FRAGMENT,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide
-    });
-    gridMesh = new THREE.Mesh(geometry, gridMaterial);
-    gridMesh.position.z = -8;
-    gridMesh.visible = Config.get('gridEnabled');
-    scene.add(gridMesh);
-}
-
-function buildParticles() {
-    if (particles) { 
-        scene.remove(particles); 
-        if (geometry) geometry.dispose(); 
-        if (material) material.dispose(); 
-        particles = null; geometry = null; material = null;
-    }
-
-    const count = parseInt(Config.get('particleCount'));
-    const shape = Config.get('shape');
-    const shapeFn = SHAPES[shape] || SHAPES['sphere'];
-    const data = generatePositions(count, shapeFn);
-
-    geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
-    geometry.setAttribute('customColor', new THREE.BufferAttribute(data.colors, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
-
-    material = new THREE.ShaderMaterial({
-        uniforms: {
-            uPixelRatio: { value: renderer.getPixelRatio() },
-            uSizeMult: { value: Config.get('particleSize') },
-            uFadeStart: { value: 4 },
-            uFadeEnd: { value: 12 }
-        },
-        vertexShader: VERTEX,
-        fragmentShader: FRAGMENT,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-    });
-
-    particles = new THREE.Points(geometry, material);
-    applyTilt();
-    applyScale();
-    scene.add(particles);
-}
-
-function applyTilt() {
-    if (!particles) return;
-    const tiltDir = Config.get('tiltDirection');
-    const tiltAngle = Config.get('tiltAngle');
-    const angle = (tiltAngle * Math.PI) / 180;
-    particles.rotation.x = 0;
-    particles.rotation.z = 0;
-    switch(tiltDir) {
-        case 'front-right': particles.rotation.z = -angle; break;
-        case 'front-left': particles.rotation.z = angle; break;
-        case 'back-right': particles.rotation.x = angle; break;
-        case 'back-left': particles.rotation.x = -angle; break;
-    }
-}
-
-function applyScale() {
-    if (!particles) return;
-    const scale = Config.get('scale');
-    particles.scale.set(scale, scale, scale);
-}
-
-function onConfigChange(e) {
-    const { key, value } = e.detail;
-    if (key === 'gridEnabled' && gridMesh) gridMesh.visible = value;
-    if (gridMaterial) {
-        if (key === 'gridDensity') gridMaterial.uniforms.uDensity.value = value;
-        if (key === 'gridThickness') gridMaterial.uniforms.uThickness.value = value;
-        if (key === 'gridColor') gridMaterial.uniforms.uColor.value = new THREE.Color(value);
-        if (key === 'gridSpeedX') gridMaterial.uniforms.uSpeed.value.x = value / 1000;
-        if (key === 'gridSpeedY') gridMaterial.uniforms.uSpeed.value.y = value / 1000;
-    }
-    if (['particleCount','shape','particleColor','multiColor'].includes(key)) buildParticles();
-    if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
-    if (key === 'scale') applyScale();
-    if (key === 'bgColor') document.body.style.background = Config.get('bgColor');
-    if (key === 'particleSize' && material) material.uniforms.uSizeMult.value = Config.get('particleSize');
-}
-
-function onResize() {
-    if (!camera || !renderer) return;
-    const container = renderer.domElement.parentElement;
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    if (material) material.uniforms.uPixelRatio.value = renderer.getPixelRatio();
-}
-
-function animate() {
-    animId = requestAnimationFrame(animate);
-    time += 0.01;
-    if (gridMaterial && Config.get('gridEnabled')) gridMaterial.uniforms.uTime.value = time;
-    const speed = Config.get('rotationSpeed') * 0.02;
-    const dir = Config.get('rotationDirection');
-    if (particles) particles.rotation.y += speed * dir;
-    renderer.render(scene, camera);
-}
-
-export function toggleRotation() {
-    const current = Config.get('rotationSpeed');
-    Config.set('rotationSpeed', current > 0.01 ? 0 : 0.5);
-}
-export function changeDirection() {
-    Config.set('rotationDirection', Config.get('rotationDirection') * -1);
-}
-export function nextShape() {
-    const keys = Object.keys(SHAPES);
-    const curr = Config.get('shape');
-    const idx = keys.indexOf(curr);
-    const next = keys[(idx + 1) % keys.length];
-    Config.set('shape', next);
-}
-export function destroy() {
-    if (animId) cancelAnimationFrame(animId);
-    window.removeEventListener('resize', onResize);
-    window.removeEventListener('configchange', onConfigChange);
-    if (renderer) renderer.dispose();
-}
+    // Specjalna obsługa dla vr-headset-edges - punkty wzdłuż krawęd
