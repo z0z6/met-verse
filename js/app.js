@@ -1,7 +1,10 @@
 // ==========================================
-// CONFIG & INITIAL STATE
+// CONFIG & LOCALSTORAGE MANAGEMENT
 // ==========================================
-const config = {
+const STORAGE_KEY = "met_verse_vr_config";
+
+// Domyślne wartości parametrów
+const defaultConfig = {
   bgColor: "#050508",
   vrColor: "#00ffcc",
   gridColor: "#1a2636",
@@ -9,6 +12,26 @@ const config = {
   speed: 0.010,
   tilt: 15
 };
+
+// Funkcja do wczytywania konfigu z localStorage
+function loadConfig() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return { ...defaultConfig };
+  try {
+    return { ...defaultConfig, ...JSON.parse(saved) };
+  } catch (e) {
+    console.error("Błąd podczas odczytu localStorage, przywracanie domyślnych:", e);
+    return { ...defaultConfig };
+  }
+}
+
+// Globalny obiekt konfiguracji
+const config = loadConfig();
+
+// Funkcja zapisująca konfigurację do localStorage
+function saveConfig() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+}
 
 // Detekcja urządzeń mobilnych dla optymalizacji
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -30,11 +53,11 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 0, 7);
 
 const renderer = new THREE.WebGLRenderer({
-  antialias: !isMobile, // Wyłączamy antialiasing na telefonach dla znacznego skoku FPS
+  antialias: !isMobile, // Wyłączamy antialiasing na telefonach dla skoku FPS
   powerPreference: "high-performance"
 });
 
-// Kluczowa optymalizacja lagów na Androidzie: ograniczenie PixelRatio do maks 1.5
+// Optymalizacja lagów na Androidzie: ograniczenie PixelRatio
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.25 : 2.0));
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
@@ -43,7 +66,6 @@ container.appendChild(renderer.domElement);
 // GEOMETRY GENERATION (VR GOGGLES & GRID)
 // ==========================================
 
-// Group parent for transforms
 const vrGroup = new THREE.Group();
 scene.add(vrGroup);
 
@@ -75,7 +97,7 @@ function createVRGoggles() {
   noseMesh.position.set(0, -0.45, 0.3);
   goggles.add(noseMesh);
 
-  // 4. Boczny pasek mocujący (lewo / prawo)
+  // 4. Boczny pasek mocujący
   const sideStrapGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.2, 16, 1, true, 0, Math.PI);
   const sideStrapMesh = new THREE.Mesh(sideStrapGeo, vrMaterial);
   sideStrapMesh.rotation.x = Math.PI / 2;
@@ -120,36 +142,60 @@ function animate() {
 animate();
 
 // ==========================================
-// ADMIN PANEL EVENT HANDLERS
+// ADMIN PANEL EVENT HANDLERS & INITIALIZATION
 // ==========================================
+
+// Synchronizacja stanu HTML z zapisanym obiektem config
+function syncInputsWithConfig() {
+  document.getElementById("bgColor").value = config.bgColor;
+  document.getElementById("vrColor").value = config.vrColor;
+  document.getElementById("gridColor").value = config.gridColor;
+
+  document.getElementById("zoom").value = config.zoom;
+  document.getElementById("val-zoom").innerText = parseFloat(config.zoom).toFixed(2);
+
+  document.getElementById("speed").value = config.speed;
+  document.getElementById("val-speed").innerText = parseFloat(config.speed).toFixed(3);
+
+  document.getElementById("tilt").value = config.tilt;
+  document.getElementById("val-tilt").innerText = `${config.tilt}°`;
+}
+
+// Podpięcie listenerów i zapisu do localStorage
 document.getElementById("bgColor").addEventListener("input", (e) => {
   config.bgColor = e.target.value;
   scene.background.set(config.bgColor);
+  saveConfig();
 });
 
 document.getElementById("vrColor").addEventListener("input", (e) => {
   config.vrColor = e.target.value;
   vrMaterial.color.set(config.vrColor);
+  saveConfig();
 });
 
 document.getElementById("gridColor").addEventListener("input", (e) => {
   config.gridColor = e.target.value;
   gridHelper.material.color.set(config.gridColor);
+  saveConfig();
 });
 
 document.getElementById("zoom").addEventListener("input", (e) => {
   config.zoom = e.target.value;
   document.getElementById("val-zoom").innerText = parseFloat(config.zoom).toFixed(2);
+  saveConfig();
 });
 
 document.getElementById("speed").addEventListener("input", (e) => {
   config.speed = e.target.value;
   document.getElementById("val-speed").innerText = parseFloat(config.speed).toFixed(3);
+  saveConfig();
 });
 
 document.getElementById("tilt").addEventListener("input", (e) => {
   config.tilt = e.target.value;
   document.getElementById("val-tilt").innerText = `${config.tilt}°`;
+  saveConfig();
 });
 
 // Zwijanie/Rozwijanie Panelu
@@ -161,6 +207,9 @@ toggleBtn.addEventListener("click", () => {
   panel.classList.toggle("collapsed");
   toggleIcon.innerText = panel.classList.contains("collapsed") ? "▲" : "▼";
 });
+
+// Wczytaj zapisaną konfigurację do kontrolek w GUI
+syncInputsWithConfig();
 
 // ==========================================
 // RESPONSYWNOŚĆ (RESIZE)
