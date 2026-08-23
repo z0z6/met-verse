@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Galeria — Metavers</title>
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
@@ -14,7 +14,7 @@
 }
 </script>
 <style>
-  /* Tło cząsteczek pod spodem */
+  /* Tło pod spodem (gogle VR / cząsteczki) */
   #canvas-container {
     position: fixed;
     top: 0;
@@ -24,7 +24,7 @@
     z-index: 0;
     pointer-events: none;
   }
-  /* Panel startowy nad tłem cząsteczek */
+  /* Panel startowy nad tłem */
   #intro {
     position: fixed;
     inset: 0;
@@ -38,14 +38,13 @@
 </head>
 <body>
 
-<!-- Kontener dla systemu cząsteczek -->
+<!-- Kontener na tło 3D -->
 <div id="canvas-container"></div>
 
 <div id="intro">
   <div class="intro-panel">
     <h1>Galeria</h1>
     <p>Wirtualna przestrzeń wystawowa — chodź, zwiedzaj, dodawaj własne prace.</p>
-
     <div class="intro-row" id="intro-buttons">
       <button id="start-fpp" class="mode-btn">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -60,21 +59,10 @@
         <span>VR</span>
       </button>
     </div>
-
     <p class="hint">W A S D — ruch &nbsp;|&nbsp; mysz — rozglądanie (kliknij ekran, by zablokować kursor) &nbsp;|&nbsp; SHIFT — bieg</p>
-
-    <!-- Szybki zapis koloru tła -->
-    <div class="bg-quick-panel">
-      <div class="bg-quick-label">
-        <span>Tło</span>
-        <a href="admin.html" style="color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;">⚙️ Pełny panel admina</a>
-      </div>
-      <div class="bg-quick-row">
-        <input type="color" id="bg-quick-color" value="#050510">
-        <button id="bg-quick-save" class="bg-save-btn">Zapisz ustawienia</button>
-      </div>
-      <div id="bg-save-status"></div>
-    </div>
+    <p class="hint" style="margin-top: 15px; font-size: 0.85em; opacity: 0.6;">
+      <a href="admin.html" style="color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor;">⚙️ Dostosuj tło (Panel Admina)</a>
+    </p>
   </div>
 </div>
 
@@ -89,57 +77,37 @@
   <div id="artwork-caption" class="hidden"></div>
 </div>
 
-<!-- Skrypt inicjalizujący system cząsteczek z pliku JSON + panel szybkiego zapisu tła -->
+<!-- Inicjalizacja tła: gogle VR (wireframe, obracające się) -->
 <script type="module">
-  import { Config } from './js/config.js';
-  import { init } from './js/particles.js';
+import { Config } from './js/config.js';
+import { init as initVRHeadsetBg } from './js/vr-headset-bg.js';
 
-  async function loadConfigAndInit() {
-    try {
-      const response = await fetch('config.json');
-      if (response.ok) {
-        const jsonConfig = await response.json();
-        // Nadpisujemy domyślne wartości tylko wtedy, gdy w localStorage
-        // nie ma jeszcze zapisanych ustawień użytkownika (Config.get sam
-        // odczytuje localStorage, więc nie chcemy nadpisywać go co odświeżenie).
-        for (const key in jsonConfig) {
-          if (localStorage.getItem('metaverse_' + key) === null) {
-            Config.set(key, jsonConfig[key]);
-          }
+async function loadConfigAndInit() {
+  try {
+    const response = await fetch('config.json');
+    if (response.ok) {
+      const jsonConfig = await response.json();
+      // Nadpisujemy domyślne wartości tylko tam, gdzie w localStorage
+      // nie ma jeszcze zapisanych ustawień z panelu admina — inaczej
+      // config.json wymazywałby zapisaną konfigurację przy każdym odświeżeniu.
+      for (const key in jsonConfig) {
+        if (localStorage.getItem('metaverse_' + key) === null) {
+          Config.set(key, jsonConfig[key]);
         }
       }
-    } catch (e) {
-      console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
     }
-
-    document.body.style.background = Config.get('bgColor');
-    init('canvas-container');
-
-    // --- Panel szybkiego zapisu koloru tła ---
-    const colorInput = document.getElementById('bg-quick-color');
-    const saveBtn = document.getElementById('bg-quick-save');
-    const status = document.getElementById('bg-save-status');
-
-    colorInput.value = Config.get('bgColor');
-
-    // Podgląd na żywo podczas wyboru koloru
-    colorInput.addEventListener('input', (e) => {
-      Config.set('bgColor', e.target.value);
-    });
-
-    // Jawny zapis (Config.set i tak zapisuje do localStorage od razu,
-    // ale przycisk daje użytkownikowi potwierdzenie akcji)
-    saveBtn.addEventListener('click', () => {
-      Config.set('bgColor', colorInput.value);
-      status.textContent = 'Zapisano ustawienia tła ✓';
-      setTimeout(() => { status.textContent = ''; }, 2000);
-    });
+  } catch (e) {
+    console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
   }
+  document.body.style.background = Config.get('bgColor');
+  initVRHeadsetBg('canvas-container');
+}
 
-  document.addEventListener('DOMContentLoaded', loadConfigAndInit);
+document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
 <!-- Główna logika metaversum -->
 <script type="module" src="src/main.js"></script>
+
 </body>
 </html>
