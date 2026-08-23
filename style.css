@@ -52,6 +52,46 @@ body > canvas {
 
 .hint { font-size:.78rem; color:rgba(255,255,255,.55); margin-top:12px; }
 
+/* ---- Telefony / wąskie ekrany: mniejszy panel, przesunięty w dół,
+   żeby nie zasłaniał obracających się gogli na środku ekranu ---- */
+@media (max-width: 640px) {
+  #intro {
+    align-items: flex-end;
+    padding-bottom: max(5vh, env(safe-area-inset-bottom));
+  }
+  .intro-panel {
+    max-width: 92vw;
+    width: 92vw;
+    padding: 16px 16px 18px;
+    border-radius: 20px;
+    /* mniej rozmycia = mniejszy koszt kompozycji dla GPU telefonu,
+       dodatkowo pozwala nieco przeświecać goglom przez panel */
+    background: rgba(15,8,22,.6);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+  }
+  .intro-panel h1 { font-size: 1.25rem; margin-bottom: 4px; }
+  .intro-panel p { font-size: .8rem; margin-bottom: 14px; line-height: 1.35; }
+  .intro-row { gap: 8px; margin-bottom: 10px; }
+  .mode-btn {
+    min-width: 0; flex: 1 1 0; max-width: none;
+    padding: 10px 4px; font-size: .66rem; border-radius: 14px; gap: 5px;
+  }
+  .mode-btn .icon { width: 20px; height: 20px; }
+  .mode-btn.long-label { font-size: .58rem; }
+  .hint { font-size: .64rem; margin-top: 6px; }
+  .hint:last-of-type { margin-top: 8px; }
+}
+
+/* Bardzo niskie/poziome ekrany (telefon w orientacji poziomej) */
+@media (max-width: 900px) and (max-height: 420px) {
+  #intro { align-items: center; padding-bottom: 0; }
+  .intro-panel { padding: 12px 16px; }
+  .intro-panel h1 { font-size: 1.05rem; margin-bottom: 2px; }
+  .intro-panel p { display: none; }
+  .hint:last-of-type { margin-top: 4px; }
+}
+
 #hud {
   position:fixed; inset:0; z-index:15; pointer-events:none;
 }
