@@ -2,7 +2,7 @@ const DEFAULTS = {
     bgColor: '#050510',
     particleColor: '#ffffff',
     multiColor: false,
-    shape: 'vr-headset',
+    shape: 'vr-headset-edges',
     rotationDirection: 1,
     rotationSpeed: 0.3,
     particleCount: 85000,
@@ -23,7 +23,12 @@ const DEFAULTS = {
 export const Config = {
     get(key) {
         try {
-            const val = localStorage.getItem('metaverse_' + key);
+            let val = localStorage.getItem('metaverse_' + key);
+            // Migracja starej (błędnej) nazwy kształtu zapisanej wcześniej w localStorage
+            if (key === 'shape' && val === 'vr-headset') {
+                val = 'vr-headset-edges';
+                try { localStorage.setItem('metaverse_shape', val); } catch(e) {}
+            }
             if (val === null) return DEFAULTS[key];
             if (typeof DEFAULTS[key] === 'boolean') return val === 'true';
             if (typeof DEFAULTS[key] === 'number') return parseFloat(val);
