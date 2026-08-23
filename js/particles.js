@@ -1,40 +1,8 @@
 import * as THREE from 'three';
 import { Config } from './config.js';
 
-const VERTEX = `
-attribute float size;
-attribute vec3 customColor;
-varying vec3 vColor;
-varying float vDepth;
-uniform float uPixelRatio;
-uniform float uSizeMult;
-
-void main() {
-    vColor = customColor;
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vDepth = -mvPosition.z;
-    gl_PointSize = size * uSizeMult * uPixelRatio * (300.0 / -mvPosition.z);
-    gl_Position = projectionMatrix * mvPosition;
-}
-`;
-
-const FRAGMENT = `
-varying vec3 vColor;
-varying float vDepth;
-uniform float uFadeStart;
-uniform float uFadeEnd;
-
-void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
-    if (dist > 0.5) discard;
-    
-    float alpha = 1.0 - smoothstep(0.35, 0.5, dist);
-    float depthFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, vDepth);
-    alpha *= depthFade;
-    
-    gl_FragColor = vec4(vColor, alpha);
-}
-`;
+// Jedyny model to gogle VR zbudowane z linii (LineSegments) — nie ma już
+// chmur punktów (sfera/torus/fale), więc nie potrzeba shaderów do punktów.
 
 const GRID_VERTEX = `
     varying vec2 vUv;
@@ -270,105 +238,6 @@ function buildVRHeadsetLineGeometry(multi, baseColor) {
     return geometry;
 }
 
-const SHAPES = {
-    'sphere': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        const r = 3;
-        return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.cos(phi), z: r * Math.sin(phi) * Math.sin(theta) };
-    },
-    'ellipsoid': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        return { x: 4 * Math.sin(phi) * Math.cos(theta), y: 2.5 * Math.cos(phi), z: 3 * Math.sin(phi) * Math.sin(theta) };
-    },
-    'torus': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI * 2;
-        const R = 2.5, r = 1;
-        return { x: (R + r * Math.cos(phi)) * Math.cos(theta), y: r * Math.sin(phi), z: (R + r * Math.cos(phi)) * Math.sin(theta) };
-    },
-    'vr-headset-edges': (u, v, geometry) => {
-        return null; // Placeholder - specjalna obsługa
-    },
-    'wave1': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        const r = 3 + 0.5 * Math.sin(8 * theta) * Math.sin(6 * phi);
-        return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.cos(phi), z: r * Math.sin(phi) * Math.sin(theta) };
-    },
-    'wave2': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        const baseR = 3;
-        const wave1 = 0.3 * Math.sin(12 * theta + 2 * phi);
-        const wave2 = 0.2 * Math.cos(8 * theta - 3 * phi);
-        const r = baseR + wave1 + wave2;
-        return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.cos(phi), z: r * Math.sin(phi) * Math.sin(theta) };
-    },
-    'wave3': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        const baseR = 3;
-        const wave = 0.4 * Math.sin(6 * theta) * Math.cos(4 * phi) + 0.3 * Math.cos(10 * theta) * Math.sin(8 * phi);
-        const r = baseR + wave;
-        return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.cos(phi), z: r * Math.sin(phi) * Math.sin(theta) };
-    },
-    'wave4': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        const baseR = 3;
-        const f1 = 0.4 * Math.sin(4 * theta) * Math.sin(3 * phi);
-        const f2 = 0.2 * Math.sin(8 * theta) * Math.sin(6 * phi);
-        const f3 = 0.1 * Math.sin(16 * theta) * Math.sin(12 * phi);
-        const f4 = 0.05 * Math.sin(32 * theta) * Math.sin(24 * phi);
-        const r = baseR + f1 + f2 + f3 + f4;
-        return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.cos(phi), z: r * Math.sin(phi) * Math.sin(theta) };
-    },
-    'wave5': (u, v) => {
-        const theta = u * Math.PI * 2;
-        const phi = v * Math.PI;
-        const baseR = 3;
-        const f1 = 0.35 * Math.sin(5 * theta + 1.2) * Math.cos(4 * phi + 0.8);
-        const f2 = 0.18 * Math.cos(11 * theta - 2.1) * Math.sin(9 * phi + 1.5);
-        const f3 = 0.09 * Math.sin(23 * theta + 0.7) * Math.cos(18 * phi - 1.1);
-        const f4 = 0.045 * Math.cos(47 * theta - 0.4) * Math.sin(36 * phi + 2.3);
-        const r = baseR + f1 + f2 + f3 + f4;
-        return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.cos(phi), z: r * Math.sin(phi) * Math.sin(theta) };
-    }
-};
-
-function generatePositions(count, shapeFn, shapeName) {
-    const pos = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const baseColor = new THREE.Color(Config.get('particleColor'));
-    const multi = Config.get('multiColor');
-
-    // Standardowa obsługa dla kształtów punktowych
-    // (gogle VR ('vr-headset-edges') są budowane osobno, jako linie —
-    // patrz buildVRHeadsetLineGeometry() i buildParticles())
-    for (let i = 0; i < count; i++) {
-        const u = Math.random();
-        const v = Math.random();
-        const p = shapeFn(u, v);
-        
-        pos[i*3] = p.x + (Math.random()-0.5)*0.08;
-        pos[i*3+1] = p.y + (Math.random()-0.5)*0.08;
-        pos[i*3+2] = p.z + (Math.random()-0.5)*0.08;
-
-        if (multi) {
-            const hue = (p.y + 3) / 6;
-            const c = new THREE.Color().setHSL(hue, 0.8, 0.6);
-            colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
-        } else {
-            colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
-        }
-        sizes[i] = 0.3 + Math.random() * 0.4;
-    }
-    return { pos, colors, sizes };
-}
-
 export function init(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -414,53 +283,24 @@ function buildGrid() {
 }
 
 function buildParticles() {
-    if (particles) { 
-        scene.remove(particles); 
-        if (geometry) geometry.dispose(); 
-        if (material) material.dispose(); 
+    if (particles) {
+        scene.remove(particles);
+        if (geometry) geometry.dispose();
+        if (material) material.dispose();
         particles = null; geometry = null; material = null;
     }
 
-    const shape = Config.get('shape');
+    // Gogle VR: jedyny dostępny model, zbudowany z linii (krawędzi).
+    const baseColor = new THREE.Color(Config.get('particleColor'));
+    const multi = Config.get('multiColor');
 
-    if (shape === 'vr-headset-edges') {
-        // Gogle VR: model zbudowany z linii (krawędzi), nie z punktów.
-        const baseColor = new THREE.Color(Config.get('particleColor'));
-        const multi = Config.get('multiColor');
-
-        geometry = buildVRHeadsetLineGeometry(multi, baseColor);
-        material = new THREE.LineBasicMaterial({
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.9
-        });
-        particles = new THREE.LineSegments(geometry, material);
-    } else {
-        const count = parseInt(Config.get('particleCount'));
-        const shapeFn = SHAPES[shape] || SHAPES['sphere'];
-        const data = generatePositions(count, shapeFn, shape);
-
-        geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
-        geometry.setAttribute('customColor', new THREE.BufferAttribute(data.colors, 3));
-        geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
-
-        material = new THREE.ShaderMaterial({
-            uniforms: {
-                uPixelRatio: { value: renderer.getPixelRatio() },
-                uSizeMult: { value: Config.get('particleSize') },
-                uFadeStart: { value: 4 },
-                uFadeEnd: { value: 12 }
-            },
-            vertexShader: VERTEX,
-            fragmentShader: FRAGMENT,
-            transparent: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending
-        });
-
-        particles = new THREE.Points(geometry, material);
-    }
+    geometry = buildVRHeadsetLineGeometry(multi, baseColor);
+    material = new THREE.LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.9
+    });
+    particles = new THREE.LineSegments(geometry, material);
 
     applyTilt();
     applyScale();
@@ -498,13 +338,9 @@ function onConfigChange(e) {
         if (key === 'gridSpeedX') gridMaterial.uniforms.uSpeed.value.x = value / 1000;
         if (key === 'gridSpeedY') gridMaterial.uniforms.uSpeed.value.y = value / 1000;
     }
-    if (['particleCount','shape','particleColor','multiColor'].includes(key)) buildParticles();
     if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
     if (key === 'scale') applyScale();
     if (key === 'bgColor') document.body.style.background = Config.get('bgColor');
-    if (key === 'particleSize' && material && material.uniforms && material.uniforms.uSizeMult) {
-        material.uniforms.uSizeMult.value = Config.get('particleSize');
-    }
 }
 
 function onResize() {
@@ -513,7 +349,6 @@ function onResize() {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
-    if (material) material.uniforms.uPixelRatio.value = renderer.getPixelRatio();
 }
 
 function animate() {
@@ -532,13 +367,6 @@ export function toggleRotation() {
 }
 export function changeDirection() {
     Config.set('rotationDirection', Config.get('rotationDirection') * -1);
-}
-export function nextShape() {
-    const keys = Object.keys(SHAPES);
-    const curr = Config.get('shape');
-    const idx = keys.indexOf(curr);
-    const next = keys[(idx + 1) % keys.length];
-    Config.set('shape', next);
 }
 export function destroy() {
     if (animId) cancelAnimationFrame(animId);
