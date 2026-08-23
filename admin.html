@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Administracyjny</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="style.css">
     <style>
         .admin-layout { display: flex; height: 100vh; }
         .admin-sidebar {
@@ -83,10 +83,6 @@
         }
         .btn-export { background: #0a84ff; color: white; }
         .btn-import { background: rgba(255,255,255,0.1); color: white; }
-        .glass-preview-panel {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            z-index: 5;
-        }
     </style>
     <script type="importmap">
     {
@@ -108,36 +104,6 @@
                     <input type="color" id="bgColor" value="#050505">
                     <span class="value-badge" id="bgColorVal">#050505</span>
                 </div>
-            </div>
-
-            <div class="control-group">
-                <label>Kolorystyka punktów / krawędzi</label>
-                <div class="control-row">
-                    <span>Multikolor</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="multiColorToggle">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="control-row" id="monoColorRow">
-                    <input type="color" id="particleColor" value="#ffffff">
-                    <span class="value-badge" id="particleColorVal">#ffffff</span>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <label>Kształt (Presety)</label>
-                <select id="shapeSelect">
-                    <option value="sphere">Pełna sfera</option>
-                    <option value="ellipsoid">Elipsoida</option>
-                    <option value="torus">Torus</option>
-                    <option value="vr-headset-edges">Gogle VR (Linie)</option>
-                    <option value="wave1">Falista sfera 1</option>
-                    <option value="wave2">Falista sfera 2</option>
-                    <option value="wave3">Falista sfera 3</option>
-                    <option value="wave4">Fraktalna sfera 1</option>
-                    <option value="wave5">Fraktalna sfera 2</option>
-                </select>
             </div>
 
             <div class="control-group">
@@ -186,20 +152,6 @@
             </div>
 
             <div class="control-group">
-                <label>Gęstość i rozmiar <span style="text-transform:none;opacity:.6;">(nie dotyczy widoku "Gogle VR — Linie")</span></label>
-                <div class="control-row">
-                    <span>Ilość</span>
-                    <input type="range" id="countRange" min="3000" max="100000" step="1000" value="75000">
-                    <span class="value-badge" id="countVal">75000</span>
-                </div>
-                <div class="control-row">
-                    <span>Rozmiar</span>
-                    <input type="range" id="sizeRange" min="1" max="100" value="20">
-                    <span class="value-badge" id="sizeVal">0.20</span>
-                </div>
-            </div>
-
-            <div class="control-group">
                 <label>Siatka w tle</label>
                 <div class="control-row">
                     <span>Włącz siatkę</span>
@@ -234,20 +186,6 @@
                 </div>
             </div>
 
-            <div class="control-group">
-                <label>Panel Glass</label>
-                <div class="control-row">
-                    <span>Przezroczystość</span>
-                    <input type="range" id="glassOpacity" min="0" max="100" value="15">
-                    <span class="value-badge" id="glassOpVal">0.15</span>
-                </div>
-                <div class="control-row">
-                    <span>Rozmycie</span>
-                    <input type="range" id="glassBlur" min="0" max="40" value="20">
-                    <span class="value-badge" id="glassBlurVal">20px</span>
-                </div>
-            </div>
-
             <button class="btn-export" id="exportBtn">📥 Eksportuj JSON</button>
             <button class="btn-import" id="importBtn">📤 Importuj JSON</button>
             <input type="file" id="importFile" accept=".json" style="display:none">
@@ -256,18 +194,6 @@
 
         <main class="admin-preview">
             <div id="canvas-container"></div>
-            <div class="glass-panel glass-preview-panel" id="glassPanel">
-                <div class="glass-header"><h2>Podgląd</h2></div>
-                <div class="glass-content">
-                    <p class="glass-desc">Zmiany są widoczne natychmiast</p>
-                    <div class="ios-grid">
-                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-settings">⚙️</div><span>Test</span></button>
-                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-play">▶️</div><span>Test</span></button>
-                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-refresh">🔄</div><span>Test</span></button>
-                        <button class="ios-icon-btn"><div class="ios-icon ios-icon-shapes">🔷</div><span>Test</span></button>
-                    </div>
-                </div>
-            </div>
         </main>
     </div>
 
