@@ -1,5 +1,5 @@
 import { Config } from './config.js';
-import { init, destroy } from './particles.js';
+import { init } from './vr-headset-bg.js';
 
 const $ = id => document.getElementById(id);
 
