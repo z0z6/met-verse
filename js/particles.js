@@ -241,6 +241,35 @@ function createVRHeadsetPolylines() {
     return polylines;
 }
 
+// Buduje geometrię linii (nie punktów) z konturu gogli VR: każdy odcinek
+// każdej polilinii staje się parą wierzchołków w jednym LineSegments,
+// dzięki czemu model renderuje się jako siatka krawędzi, a nie chmura punktów.
+function buildVRHeadsetLineGeometry(multi, baseColor) {
+    const polylines = createVRHeadsetPolylines();
+    const positions = [];
+    const colors = [];
+
+    const colorAt = (p) => {
+        if (!multi) return baseColor;
+        const hue = THREE.MathUtils.clamp((p.y + 1.8) / 3.6, 0, 1);
+        return new THREE.Color().setHSL(hue, 0.8, 0.6);
+    };
+
+    polylines.forEach(pts => {
+        for (let i = 0; i < pts.length - 1; i++) {
+            const p1 = pts[i], p2 = pts[i + 1];
+            positions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+            const c1 = colorAt(p1), c2 = colorAt(p2);
+            colors.push(c1.r, c1.g, c1.b, c2.r, c2.g, c2.b);
+        }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    return geometry;
+}
+
 const SHAPES = {
     'sphere': (u, v) => {
         const theta = u * Math.PI * 2;
@@ -316,34 +345,9 @@ function generatePositions(count, shapeFn, shapeName) {
     const baseColor = new THREE.Color(Config.get('particleColor'));
     const multi = Config.get('multiColor');
 
-    // Specjalna obsługa dla vr-headset-edges - punkty wzdłuż konturu gogli,
-    // próbkowane proporcjonalnie do długości odcinków (gęstość = wierność kształtu)
-    if (shapeName === 'vr-headset-edges') {
-        const polylines = createVRHeadsetPolylines();
-        const sampled = sampleWeightedPoints(polylines, count);
-        const noise = 0.015;
-
-        for (let i = 0; i < count; i++) {
-            const point = sampled[i] || new THREE.Vector3();
-
-            pos[i*3]   = point.x + (Math.random() - 0.5) * noise;
-            pos[i*3+1] = point.y + (Math.random() - 0.5) * noise;
-            pos[i*3+2] = point.z + (Math.random() - 0.5) * noise;
-
-            if (multi) {
-                const hue = THREE.MathUtils.clamp((point.y + 1.8) / 3.6, 0, 1);
-                const c = new THREE.Color().setHSL(hue, 0.8, 0.6);
-                colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
-            } else {
-                colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
-            }
-            sizes[i] = 0.3 + Math.random() * 0.4;
-        }
-
-        return { pos, colors, sizes };
-    }
-
-    // Standardowa obsługa dla innych kształtów
+    // Standardowa obsługa dla kształtów punktowych
+    // (gogle VR ('vr-headset-edges') są budowane osobno, jako linie —
+    // patrz buildVRHeadsetLineGeometry() i buildParticles())
     for (let i = 0; i < count; i++) {
         const u = Math.random();
         const v = Math.random();
@@ -417,31 +421,47 @@ function buildParticles() {
         particles = null; geometry = null; material = null;
     }
 
-    const count = parseInt(Config.get('particleCount'));
     const shape = Config.get('shape');
-    const shapeFn = SHAPES[shape] || SHAPES['sphere'];
-    const data = generatePositions(count, shapeFn, shape);
 
-    geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
-    geometry.setAttribute('customColor', new THREE.BufferAttribute(data.colors, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
+    if (shape === 'vr-headset-edges') {
+        // Gogle VR: model zbudowany z linii (krawędzi), nie z punktów.
+        const baseColor = new THREE.Color(Config.get('particleColor'));
+        const multi = Config.get('multiColor');
 
-    material = new THREE.ShaderMaterial({
-        uniforms: {
-            uPixelRatio: { value: renderer.getPixelRatio() },
-            uSizeMult: { value: Config.get('particleSize') },
-            uFadeStart: { value: 4 },
-            uFadeEnd: { value: 12 }
-        },
-        vertexShader: VERTEX,
-        fragmentShader: FRAGMENT,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-    });
+        geometry = buildVRHeadsetLineGeometry(multi, baseColor);
+        material = new THREE.LineBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9
+        });
+        particles = new THREE.LineSegments(geometry, material);
+    } else {
+        const count = parseInt(Config.get('particleCount'));
+        const shapeFn = SHAPES[shape] || SHAPES['sphere'];
+        const data = generatePositions(count, shapeFn, shape);
 
-    particles = new THREE.Points(geometry, material);
+        geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
+        geometry.setAttribute('customColor', new THREE.BufferAttribute(data.colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
+
+        material = new THREE.ShaderMaterial({
+            uniforms: {
+                uPixelRatio: { value: renderer.getPixelRatio() },
+                uSizeMult: { value: Config.get('particleSize') },
+                uFadeStart: { value: 4 },
+                uFadeEnd: { value: 12 }
+            },
+            vertexShader: VERTEX,
+            fragmentShader: FRAGMENT,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+
+        particles = new THREE.Points(geometry, material);
+    }
+
     applyTilt();
     applyScale();
     scene.add(particles);
@@ -482,7 +502,9 @@ function onConfigChange(e) {
     if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
     if (key === 'scale') applyScale();
     if (key === 'bgColor') document.body.style.background = Config.get('bgColor');
-    if (key === 'particleSize' && material) material.uniforms.uSizeMult.value = Config.get('particleSize');
+    if (key === 'particleSize' && material && material.uniforms && material.uniforms.uSizeMult) {
+        material.uniforms.uSizeMult.value = Config.get('particleSize');
+    }
 }
 
 function onResize() {
