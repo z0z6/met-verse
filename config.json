@@ -1,16 +1,16 @@
 {
-  "bgColor": "#050510",
+  "bgColor": "#ffffff",
   "particleColor": "#ffffff",
   "multiColor": false,
   "rotationDirection": 1,
   "rotationSpeed": 0.1,
   "gridEnabled": true,
-  "gridColor": "#00ffff",
-  "gridDensity": 8,
-  "gridThickness": 0.25,
-  "gridSpeedX": 5,
-  "gridSpeedY": 0,
+  "gridColor": "#000000",
+  "gridDensity": 10,
+  "gridThickness": 0.5,
+  "gridSpeedX": -66,
+  "gridSpeedY": -91,
   "tiltDirection": "front-right",
   "tiltAngle": 15,
-  "scale": 1.71
+  "scale": 1.07
 }
