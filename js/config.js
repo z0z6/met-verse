@@ -1,14 +1,11 @@
+// Jedyny dostępny model to gogle VR zbudowane z linii — nie ma już
+// wyboru kształtu (sfery/torus/fale), więc nie trzymamy tego w konfiguracji.
 const DEFAULTS = {
     bgColor: '#050510',
-    particleColor: '#ffffff',
-    multiColor: false,
-    shape: 'vr-headset-edges',
+    particleColor: '#ffffff', // kolor linii gogli VR (na stałe, brak kontrolki w UI)
+    multiColor: false,        // wielokolorowe linie gogli (na stałe wyłączone)
     rotationDirection: 1,
     rotationSpeed: 0.3,
-    particleCount: 85000,
-    particleSize: 0.14,
-    glassOpacity: 0.08,
-    glassBlur: 20,
     gridEnabled: true,
     gridColor: '#00ffff',
     gridDensity: 8,
@@ -23,12 +20,7 @@ const DEFAULTS = {
 export const Config = {
     get(key) {
         try {
-            let val = localStorage.getItem('metaverse_' + key);
-            // Migracja starej (błędnej) nazwy kształtu zapisanej wcześniej w localStorage
-            if (key === 'shape' && val === 'vr-headset') {
-                val = 'vr-headset-edges';
-                try { localStorage.setItem('metaverse_shape', val); } catch(e) {}
-            }
+            const val = localStorage.getItem('metaverse_' + key);
             if (val === null) return DEFAULTS[key];
             if (typeof DEFAULTS[key] === 'boolean') return val === 'true';
             if (typeof DEFAULTS[key] === 'number') return parseFloat(val);
