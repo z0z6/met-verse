@@ -5,7 +5,7 @@ import {
   buildLoungeSet, buildCornerSofa, buildCoffeeTable,
   buildPottedPlant, buildBushyPlant, buildBench, buildBonsai, buildLamellaJamb, buildLamellaReveal,
 } from './furniture.js';
-import { ROOMS, OBSTACLES, resolveCollision, crossesSolidWall, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS } from './collision.js';
+import { ROOMS, OBSTACLES, resolveCollision, crossesSolidWall, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS, BOUNDS } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
@@ -17,17 +17,21 @@ scene.fog = new THREE.Fog(0x111114, 14, 34);
 
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.05, 100);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "low-power" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
-document.body.appendChild(renderer.domElement);
 
-// Ukryj canvas metaversum na starcie, aby nie prześwitywał przez intro
+const isMobileDevice = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
+if (isMobileDevice) {
+  renderer.setPixelRatio(1);
+  renderer.shadowMap.enabled = false;
+}
+
+document.body.appendChild(renderer.domElement);
 renderer.domElement.style.display = 'none';
 
-// Rig gracza
 const rig = new THREE.Group();
 scene.add(rig);
 rig.add(camera);
@@ -38,7 +42,6 @@ const loungeX = (mainRoom.minX + mainRoom.maxX) / 2;
 buildLoungeSet(scene, loungeX, 0);
 OBSTACLES.push({ x: loungeX, z: -0.4, radius: 2.1 });
 
-// Kanapa narożna w sali zachodniej
 const westRoom = ROOMS[0];
 const westCenterX = (westRoom.minX + westRoom.maxX) / 2;
 const ARM_A = 4, ARM_B = 4;
@@ -139,7 +142,6 @@ const TELEPORT_DWELL = 2.2;
 const cardboard = new CardboardMode(renderer, camera);
 let inVR = false;
 
-const isMobileDevice = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
 const vrBtn = document.getElementById('start-vr');
 if (!isMobileDevice) {
   vrBtn.disabled = true;
@@ -147,7 +149,14 @@ if (!isMobileDevice) {
   vrBtn.querySelector('span').textContent = 'VR dostępne tylko w urządzeniach mobilnych';
 }
 
-// Bezpieczny Promień Teleportacji VR (Zabezpieczenie przed przechodzeniem przez ściany)
+// Wall boundaries for camera clamping in VR
+const WALL_MARGIN = 0.3;
+const MIN_X = BOUNDS.minX + WALL_MARGIN;
+const MAX_X = BOUNDS.maxX - WALL_MARGIN;
+const MIN_Z = -DEPTH/2 + WALL_MARGIN;
+const MAX_Z = DEPTH/2 - WALL_MARGIN;
+
+// Safe teleportation with improved collision checking
 function updateGazeTeleport(dt) {
   const dir = new THREE.Vector3();
   const origin = new THREE.Vector3();
@@ -163,18 +172,21 @@ function updateGazeTeleport(dt) {
       fill.style.height = Math.min(100, (dwell / TELEPORT_DWELL) * 100) + '%';
       if (dwell >= TELEPORT_DWELL) {
         const targetPoint = hits[0].point.clone();
-        
-        // Promień kolizji gracza w VR (zwiększony margines 0.55m od ścian)
-        const PLAYER_VR_RADIUS = 0.55; 
+        const PLAYER_VR_RADIUS = 0.55;
 
-        // 1. Ogranicz pozycję wewnątrz ścian/obszaru
         resolveCollision(targetPoint, PLAYER_VR_RADIUS, 1.0);
 
-        // 2. Sprawdź, czy nowa linia przemieszczenia nie przecina litej ściany
+        // Check intermediate positions for wall collisions
+        const tempVec = new THREE.Vector3();
+        const steps = 10;
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          tempVec.lerpVectors(rig.position, targetPoint, t);
+          resolveCollision(tempVec, PLAYER_VR_RADIUS, 1.0);
+        }
+
         if (!crossesSolidWall(rig.position, targetPoint, PLAYER_VR_RADIUS)) {
-          rig.position.x = targetPoint.x;
-          rig.position.z = targetPoint.z;
-          // Dodatkowy warunek korygujący
+          rig.position.copy(targetPoint);
           resolveCollision(rig.position, PLAYER_VR_RADIUS, 1.0);
         }
 
@@ -206,11 +218,46 @@ function updateCaption() {
   }
 }
 
+// Camera boundary clamping in VR mode
+function clampCameraInVR() {
+  const cameraWorldPos = new THREE.Vector3();
+  camera.getWorldPosition(cameraWorldPos);
+
+  cameraWorldPos.x = Math.max(MIN_X, Math.min(MAX_X, cameraWorldPos.x));
+  cameraWorldPos.z = Math.max(MIN_Z, Math.min(MAX_Z, cameraWorldPos.z));
+
+  const cameraDir = new THREE.Vector3();
+  camera.getWorldDirection(cameraDir);
+  const WALL_DISTANCE = 0.8;
+
+  const walls = [
+    { normal: new THREE.Vector3(0, 0, 1), point: new THREE.Vector3(0, 0, DEPTH/2) },
+    { normal: new THREE.Vector3(0, 0, -1), point: new THREE.Vector3(0, 0, -DEPTH/2) },
+    { normal: new THREE.Vector3(1, 0, 0), point: new THREE.Vector3(BOUNDS.maxX, 0, 0) },
+    { normal: new THREE.Vector3(-1, 0, 0), point: new THREE.Vector3(BOUNDS.minX, 0, 0) }
+  ];
+
+  for (const wall of walls) {
+    const dist = cameraDir.dot(wall.normal);
+    if (dist > 0.7) {
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(wall.normal, wall.point);
+      const distToWall = plane.distanceToPoint(cameraWorldPos);
+      if (distToWall < WALL_DISTANCE) {
+        const offset = new THREE.Vector3().copy(wall.normal)
+          .multiplyScalar(WALL_DISTANCE - distToWall);
+        cameraWorldPos.add(offset);
+      }
+    }
+  }
+
+  camera.position.copy(cameraWorldPos.clone().sub(rig.position));
+}
+
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inVR) {
-    // Ciągłe odtrącanie gracza od ściany w trybie VR
     resolveCollision(rig.position, 0.55, 1.0);
+    clampCameraInVR();
 
     const gp = getActiveGamepad();
     const reticle = document.getElementById('reticle-ring');
@@ -242,16 +289,16 @@ window.addEventListener('resize', () => {
   }
 });
 
-// UI: ekran startowy
 function startExperience(mode) {
   renderer.domElement.style.display = 'block';
-  
+
   controls.setMode(mode);
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  
+
   if (isMobileDevice) {
     document.getElementById('joystick-base').classList.remove('hidden');
+    document.getElementById('exit-metaverse').classList.remove('hidden');
   } else {
     renderer.domElement.requestPointerLock();
   }
@@ -268,10 +315,10 @@ vrBtn.addEventListener('click', async () => {
 
   renderer.domElement.style.display = 'block';
 
-  // Bezpieczny start pozycji w VR - na samym środku głównej sali z uwzględnieniem kolizji
   const vrStart = new THREE.Vector3(loungeX, 0, 0);
   resolveCollision(vrStart, 0.55, 1.0);
   rig.position.copy(vrStart);
+
   rig.position.y = 0;
 
   camera.position.set(0, 1.65, 0);
@@ -286,14 +333,13 @@ vrBtn.addEventListener('click', async () => {
   document.getElementById('exit-vr').classList.remove('hidden');
 });
 
+// UNIVERSAL EXIT FUNCTION - works in all modes
+document.getElementById('exit-metaverse').addEventListener('click', () => exitToIntro());
 document.getElementById('exit-vr').addEventListener('click', () => exitToIntro());
 
-// Wyjście z metaversu do ekranu startowego pod klawiszem Esc — działa
-// zarówno w trybie FPP/TPP (odblokowuje kursor, chowa HUD), jak i w VR
-// (dodatkowo wyłącza tryb cardboard, tak jak przycisk "Wyjdź z VR").
 function exitToIntro() {
   const intro = document.getElementById('intro');
-  if (!intro.classList.contains('hidden')) return; // już jesteśmy na starcie
+  if (!intro.classList.contains('hidden')) return;
 
   if (inVR) {
     cardboard.disable();
@@ -312,6 +358,7 @@ function exitToIntro() {
   }
 
   document.getElementById('joystick-base').classList.add('hidden');
+  document.getElementById('exit-metaverse').classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
   intro.classList.remove('hidden');
   renderer.domElement.style.display = 'none';
@@ -319,4 +366,11 @@ function exitToIntro() {
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') exitToIntro();
+});
+
+// Back button on mobile to exit
+history.pushState(null, null, window.location.href);
+window.addEventListener('popstate', () => {
+  if (!document.getElementById('intro').classList.contains('hidden')) return;
+  exitToIntro();
 });
