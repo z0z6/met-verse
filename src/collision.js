@@ -1,153 +1,90 @@
-import * as THREE from 'three';
+// Układ: trzy sale w rzędzie wzdłuż osi X, ta sama głębokość — dzięki temu
+// cała bryła to jeden prostokąt na zewnątrz, a wewnętrzne ściany działowe
+// (z przejściami/drzwiami) obsługujemy osobno jako proste kolizje liniowe.
 
-// Room dimensions and layout
-const DEPTH = 24;
-const WALL_THICKNESS = 0.6;
-const DOOR_HALF_WIDTH = 2.5;
+export const DEPTH = 16;
+export const ROOM_WIDTHS = [16, 16, 16]; // zachodnia / główna / wschodnia
+export const DOOR_HALF_WIDTH = 1.6; // połowa szerokości przejścia między salami
+export const WALL_THICKNESS = 0.55; // grubość ścian działowych — proporcjonalna do 16 m sali
 
-// Room boundaries
-const BOUNDS = {
-  minX: -12,
-  maxX: 12,
-  minZ: -DEPTH/2,
-  maxZ: DEPTH/2
+const totalWidth = ROOM_WIDTHS.reduce((a, b) => a + b, 0);
+
+// Granice sal w osi X (kolejno)
+export const ROOMS = (() => {
+  let x = -totalWidth / 2;
+  return ROOM_WIDTHS.map((w) => {
+    const room = { minX: x, maxX: x + w };
+    x += w;
+    return room;
+  });
+})();
+
+export const BOUNDS = {
+  minX: -totalWidth / 2,
+  maxX: totalWidth / 2,
+  minZ: -DEPTH / 2,
+  maxZ: DEPTH / 2,
 };
 
-// Partition wall positions (X coordinates where internal walls are)
-const PARTITIONS = [-4, 4];
+// Ściany działowe (na granicach sal) z przejściem na środku
+export const PARTITIONS = ROOMS.slice(0, -1).map((room) => room.maxX);
 
-// Room definitions
-const ROOMS = [
-  // West room
-  { minX: BOUNDS.minX, maxX: PARTITIONS[0], minZ: BOUNDS.minZ, maxZ: BOUNDS.maxZ },
-  // Main room
-  { minX: PARTITIONS[0], maxX: PARTITIONS[1], minZ: BOUNDS.minZ, maxZ: BOUNDS.maxZ },
-  // East room
-  { minX: PARTITIONS[1], maxX: BOUNDS.maxX, minZ: BOUNDS.minZ, maxZ: BOUNDS.maxZ }
-];
+export const OBSTACLES = []; // { x, z, radius } — wypełniane przy budowie mebli
 
-// Obstacles array - will be populated by main.js
-const OBSTACLES = [];
+export function resolveCollision(pos, radius = 0.5, margin = 0.5) {
+  pos.x = Math.max(BOUNDS.minX + margin, Math.min(BOUNDS.maxX - margin, pos.x));
+  pos.z = Math.max(BOUNDS.minZ + margin, Math.min(BOUNDS.maxZ - margin, pos.z));
 
-/**
- * Check if a point is inside the valid bounds
- */
-export function isInsideBounds(point, margin = 0) {
-  return point.x >= BOUNDS.minX + margin &&
-         point.x <= BOUNDS.maxX - margin &&
-         point.z >= BOUNDS.minZ + margin &&
-         point.z <= BOUNDS.maxZ - margin;
-}
-
-/**
- * Check if a line segment between two points crosses a solid wall
- */
-export function crossesSolidWall(start, end, radius) {
-  const dir = new THREE.Vector3().subVectors(end, start).normalize();
-  const distance = start.distanceTo(end);
-
-  // Check each wall plane
-  const walls = [
-    // External walls
-    { normal: new THREE.Vector3(1, 0, 0), point: new THREE.Vector3(BOUNDS.maxX, 0, 0) },
-    { normal: new THREE.Vector3(-1, 0, 0), point: new THREE.Vector3(BOUNDS.minX, 0, 0) },
-    { normal: new THREE.Vector3(0, 0, 1), point: new THREE.Vector3(0, 0, BOUNDS.maxZ) },
-    { normal: new THREE.Vector3(0, 0, -1), point: new THREE.Vector3(0, 0, BOUNDS.minZ) },
-    // Partition walls (excluding doorways)
-    { normal: new THREE.Vector3(1, 0, 0), point: new THREE.Vector3(PARTITIONS[0], 0, 0),
-      minZ: DOOR_HALF_WIDTH, maxZ: BOUNDS.maxZ, isPartition: true },
-    { normal: new THREE.Vector3(-1, 0, 0), point: new THREE.Vector3(PARTITIONS[0], 0, 0),
-      minZ: BOUNDS.minZ, maxZ: -DOOR_HALF_WIDTH, isPartition: true },
-    { normal: new THREE.Vector3(1, 0, 0), point: new THREE.Vector3(PARTITIONS[1], 0, 0),
-      minZ: DOOR_HALF_WIDTH, maxZ: BOUNDS.maxZ, isPartition: true },
-    { normal: new THREE.Vector3(-1, 0, 0), point: new THREE.Vector3(PARTITIONS[1], 0, 0),
-      minZ: BOUNDS.minZ, maxZ: -DOOR_HALF_WIDTH, isPartition: true }
-  ];
-
-  for (const wall of walls) {
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(wall.normal, wall.point);
-    const ray = new THREE.Ray(start, dir);
-    const intersect = new THREE.Vector3();
-
-    if (ray.intersectPlane(plane, intersect)) {
-      if (start.distanceTo(intersect) <= distance) {
-        // For partition walls, check if intersection is within the wall segment (not doorway)
-        if (wall.isPartition) {
-          if (intersect.z >= wall.minZ && intersect.z <= wall.maxZ) {
-            return true; // Hits solid part of partition wall
-          }
-        } else {
-          return true; // Hits external wall
-        }
-      }
+  for (const px of PARTITIONS) {
+    const inDoorway = Math.abs(pos.z) < DOOR_HALF_WIDTH - radius;
+    if (inDoorway) continue;
+    const halfWall = WALL_THICKNESS / 2;
+    if (Math.abs(pos.x - px) < halfWall + radius) {
+      pos.x = px + Math.sign(pos.x - px || 1) * (halfWall + radius);
     }
   }
 
-  return false;
-}
-
-/**
- * Resolve collision for a point with room boundaries and obstacles
- * Pushes the point out of collisions
- */
-export function resolveCollision(point, radius, height) {
-  let moved = false;
-
-  // First, clamp to room boundaries with margin
-  const margin = radius;
-  point.x = Math.max(BOUNDS.minX + margin, Math.min(BOUNDS.maxX - margin, point.x));
-  point.z = Math.max(BOUNDS.minZ + margin, Math.min(BOUNDS.maxZ - margin, point.z));
-
-  // Check collision with circular obstacles
   for (const obs of OBSTACLES) {
     if (obs.radius !== undefined) {
-      const dx = point.x - obs.x;
-      const dz = point.z - obs.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      if (dist < radius + obs.radius) {
-        moved = true;
-        const angle = Math.atan2(dz, dx);
-        const pushDist = (radius + obs.radius) - dist;
-        point.x += Math.cos(angle) * pushDist * 0.5;
-        point.z += Math.sin(angle) * pushDist * 0.5;
+      const dx = pos.x - obs.x, dz = pos.z - obs.z;
+      const dist = Math.hypot(dx, dz);
+      const minDist = obs.radius + radius;
+      if (dist < minDist && dist > 0.0001) {
+        const push = minDist / dist;
+        pos.x = obs.x + dx * push;
+        pos.z = obs.z + dz * push;
+      }
+    } else {
+      // prostokątna przeszkoda (np. ławka) — dokładniejsza niż okrąg dla wydłużonych mebli
+      const rx0 = obs.minX - radius, rx1 = obs.maxX + radius;
+      const rz0 = obs.minZ - radius, rz1 = obs.maxZ + radius;
+      if (pos.x > rx0 && pos.x < rx1 && pos.z > rz0 && pos.z < rz1) {
+        const dL = pos.x - rx0, dR = rx1 - pos.x, dT = pos.z - rz0, dB = rz1 - pos.z;
+        const m = Math.min(dL, dR, dT, dB);
+        if (m === dL) pos.x = rx0; else if (m === dR) pos.x = rx1;
+        else if (m === dT) pos.z = rz0; else pos.z = rz1;
       }
     }
   }
-
-  // Check collision with rectangular obstacles
-  for (const obs of OBSTACLES) {
-    if (obs.minX !== undefined) {
-      if (point.x > obs.minX - radius && point.x < obs.maxX + radius &&
-          point.z > obs.minZ - radius && point.z < obs.maxZ + radius) {
-
-        moved = true;
-        const pushX = Math.max(obs.minX + radius - point.x, point.x - (obs.maxX - radius));
-        const pushZ = Math.max(obs.minZ + radius - point.z, point.z - (obs.maxZ - radius));
-
-        if (Math.abs(pushX) < Math.abs(pushZ)) {
-          point.x += pushX;
-        } else {
-          point.z += pushZ;
-        }
-      }
-    }
-  }
-
-  // Clamp again after obstacle resolution
-  point.x = Math.max(BOUNDS.minX + radius, Math.min(BOUNDS.maxX - radius, point.x));
-  point.z = Math.max(BOUNDS.minZ + radius, Math.min(BOUNDS.maxZ - radius, point.z));
-
-  return moved;
+  return pos;
 }
 
-// Export all constants and functions
-export {
-  ROOMS,
-  OBSTACLES,
-  DEPTH,
-  PARTITIONS,
-  DOOR_HALF_WIDTH,
-  WALL_THICKNESS,
-  BOUNDS
-};
+// Sprawdza, czy prosta między `from` a `to` przecina pełny (nie-drzwiowy)
+// fragment którejś ze ścian działowych. Używane do blokowania teleportacji
+// "na skróty" przez ścianę zamiast przez otwór drzwi.
+export function crossesSolidWall(from, to, radius = 0.45) {
+  for (const px of PARTITIONS) {
+    const fromSide = from.x - px;
+    const toSide = to.x - px;
+    if (fromSide === 0 && toSide === 0) continue;
+    if ((fromSide > 0) === (toSide > 0)) continue; // nie przecina płaszczyzny tej ściany
+
+    const t = fromSide / (fromSide - toSide); // 0..1 — miejsce przecięcia na odcinku
+    const zAtWall = from.z + t * (to.z - from.z);
+
+    if (Math.abs(zAtWall) > DOOR_HALF_WIDTH - radius) {
+      return true; // przecięcie wypada w pełnym murze, nie w przejściu
+    }
+  }
+  return false;
+}
