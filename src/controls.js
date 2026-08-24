@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { resolveCollision } from './collision.js';
+import { ROOM_HEIGHT } from './room.js';
 
 export const keys = {};
 window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
@@ -99,7 +100,7 @@ export class GalleryControls {
     for (const side of [-1, 1]) {
       // ================= RAMIĘ =================
       const armPivot = new THREE.Group();
-      armPivot.position.set(side * (chestRad + 0.035), shoulderY - 0.01, 0);
+      armPivot.position.set(side * (chestRad + 0.035), shoulderY - 0.09, 0);
       g.add(armPivot);
 
       // Staw barkowy — spaja klatkę piersiową z ramieniem
@@ -256,8 +257,16 @@ export class GalleryControls {
       const dist = 4.2;
       const cx = this.player.x + Math.sin(this.yaw) * Math.cos(this.pitch) * dist;
       const cz = this.player.z + Math.cos(this.yaw) * Math.cos(this.pitch) * dist;
-      const cy = 1.2 + Math.sin(this.pitch) * dist + 1.4;
-      this.camera.position.lerp(new THREE.Vector3(cx, cy, cz), dt * 6);
+      let cy = 1.2 + Math.sin(this.pitch) * dist + 1.4;
+
+      // Kamera TPP nie może wylecieć poza bryłę pomieszczeń: ograniczamy
+      // ją do wnętrza ścian (tak jak gracza) oraz do przedziału podłoga–sufit,
+      // żeby patrzenie w górę/dół nie wypychało jej ponad dach ani pod podłogę.
+      const camXZ = new THREE.Vector3(cx, 0, cz);
+      resolveCollision(camXZ, 0.3, 0.3);
+      cy = Math.max(0.35, Math.min(ROOM_HEIGHT - 0.35, cy));
+
+      this.camera.position.lerp(new THREE.Vector3(camXZ.x, cy, camXZ.z), dt * 6);
       this.camera.lookAt(this.player.x, 1.4, this.player.z);
     }
   }
