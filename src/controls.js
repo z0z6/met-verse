@@ -24,60 +24,144 @@ export class GalleryControls {
 
   _buildAvatar() {
     const g = new THREE.Group();
-    const SKIN = new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 });
-    const SHIRT = new THREE.MeshStandardMaterial({ color: 0x3a6ea5, roughness: 0.65 });
-    const PANTS = new THREE.MeshStandardMaterial({ color: 0x2b2b33, roughness: 0.8 });
-    const SHOE = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.5 });
 
-    const hipY = 0.85;
+    // Dłonie, szyja i głowa zostają w dotychczasowym kolorze "skóry";
+    // reszta ciała (tors, ramiona, nogi, stopy) jest czarna.
+    const SKIN  = new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.8 });
+    const BODY  = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.55, metalness: 0.05 });
 
-    // Tors
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.32, 4, 8), SHIRT);
-    torso.position.y = hipY + 0.16 + 0.31;
-    g.add(torso);
-
-    // Szyja
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.07, 8), SKIN);
-    neck.position.y = torso.position.y + 0.16 + 0.31;
-    g.add(neck);
-
-    // Głowa
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 16), SKIN);
-    head.position.y = neck.position.y + 0.075 + 0.1;
-    g.add(head);
-
-    // Pomocnicza funkcja: kończyna jako kapsuła, której LOKALNE zero leży
-    // u GÓRY (bark/biodro) — dzięki temu obrót (animacja chodu) pivotuje
-    // z właściwego miejsca, tak jak poprawiliśmy wcześniej przy dracenie.
-    function limb(length, radius, mat) {
-      const geo = new THREE.CapsuleGeometry(radius, length, 4, 8);
+    // Pomocnicza: segment kończyny jako kapsuła, której LOKALNE zero leży
+    // u GÓRY (staw) — obrót pivotu (animacja chodu) dzieje się więc dokładnie
+    // w barku/biodrze, a nie w środku bryły.
+    function segment(length, radius, mat, capSeg = 6, radialSeg = 14) {
+      const geo = new THREE.CapsuleGeometry(radius, length, capSeg, radialSeg);
       geo.translate(0, -(length / 2 + radius), 0);
       return new THREE.Mesh(geo, mat);
     }
+    // Odcinek pełnej długości segmentu (razem z półkulistymi końcówkami) —
+    // używany do wyliczania, gdzie zaczyna się kolejna część ciała, tak
+    // żeby zawsze zachodziły na siebie i nigdzie nie zostawała przerwa.
+    const spanOf = (length, radius) => length + 2 * radius;
 
-    const shoulderY = torso.position.y + 0.16 + 0.31 - 0.05;
+    // ---------- Nogi: kostka → łydka → kolano → udo → biodro ----------
+    const footH = 0.06;
+    const shinLen = 0.20, shinRad = 0.055;
+    const thighLen = 0.21, thighRad = 0.07;
+    const ankleY = footH - 0.01; // lekka zakładka ze stopą
+    const kneeY  = ankleY + spanOf(shinLen, shinRad);
+    const hipY   = kneeY + spanOf(thighLen, thighRad);
+
+    // ---------- Tors: biodro → talia → klatka piersiowa ----------
+    const waistLen = 0.08, waistRad = 0.115;
+    const chestLen = 0.17, chestRad = 0.145;
+    const waistY   = hipY + spanOf(waistLen, waistRad) / 2 - 0.028;
+    const waistTop = waistY + spanOf(waistLen, waistRad) / 2;
+    const chestY   = waistTop + spanOf(chestLen, chestRad) / 2 - 0.03;
+    const chestTop = chestY + spanOf(chestLen, chestRad) / 2;
+    const shoulderY = chestTop - 0.018;
+
+    // ---------- Szyja i głowa ----------
+    const neckLen = 0.045, neckRTop = 0.048, neckRBot = 0.058;
+    const neckY   = shoulderY + neckLen / 2 + 0.004;
+    const neckTop = neckY + neckLen / 2;
+    const headR   = 0.108;
+    const headY   = neckTop + headR * 0.55;
+
+    // --- Miednica: łączy nogi (rozstawione na boki) ze środkiem tułowia ---
+    const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 12), BODY);
+    pelvis.position.y = hipY - 0.02;
+    pelvis.scale.set(1.25, 0.85, 1.0);
+    g.add(pelvis);
+
+    // --- Talia (węższa) i klatka piersiowa (szersza), bez przerwy między nimi ---
+    const waist = new THREE.Mesh(new THREE.CapsuleGeometry(waistRad, waistLen, 6, 16), BODY);
+    waist.position.y = waistY;
+    g.add(waist);
+
+    const chest = new THREE.Mesh(new THREE.CapsuleGeometry(chestRad, chestLen, 6, 16), BODY);
+    chest.position.y = chestY;
+    g.add(chest);
+
+    // --- Szyja: zachodzi jednocześnie na klatkę piersiową i na głowę ---
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(neckRTop, neckRBot, neckLen, 14), SKIN);
+    neck.position.y = neckY;
+    g.add(neck);
+
+    // --- Głowa: lekko wydłużona sfera (bardziej ludzki kształt niż idealna kula) ---
+    const head = new THREE.Mesh(new THREE.SphereGeometry(headR, 22, 20), SKIN);
+    head.position.y = headY;
+    head.scale.set(0.93, 1.08, 0.96);
+    g.add(head);
+
     this.legPivots = [];
     this.armPivots = [];
 
     for (const side of [-1, 1]) {
-      // Ramię
-      const arm = limb(0.42, 0.05, SKIN.clone());
-      arm.position.set(side * 0.2, shoulderY, 0);
-      arm.rotation.z = side * 0.12;
-      g.add(arm);
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), SKIN);
-      hand.position.y = -(0.42 + 0.1);
-      arm.add(hand);
-      this.armPivots.push(arm);
+      // ================= RAMIĘ =================
+      const armPivot = new THREE.Group();
+      armPivot.position.set(side * (chestRad + 0.035), shoulderY - 0.01, 0);
+      g.add(armPivot);
 
-      // Noga
-      const leg = limb(0.6, 0.08, PANTS.clone());
-      leg.position.set(side * 0.1, hipY, 0);
-      g.add(leg);
-      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.18), SHOE);
-      foot.position.set(0, -(0.6 + 0.16), 0.03);
-      leg.add(foot);
-      this.legPivots.push(leg);
+      // Staw barkowy — spaja klatkę piersiową z ramieniem
+      const shoulderJoint = new THREE.Mesh(new THREE.SphereGeometry(0.058, 14, 12), BODY);
+      armPivot.add(shoulderJoint);
+
+      const upperArmLen = 0.16, upperArmRad = 0.048;
+      const upperArm = segment(upperArmLen, upperArmRad, BODY);
+      upperArm.rotation.z = side * 0.09;
+      armPivot.add(upperArm);
+
+      const elbowY = -spanOf(upperArmLen, upperArmRad);
+      const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.044, 12, 10), BODY);
+      elbowJoint.position.y = elbowY;
+      armPivot.add(elbowJoint);
+
+      const forearmLen = 0.15, forearmRad = 0.04;
+      const forearm = segment(forearmLen, forearmRad, BODY);
+      forearm.position.y = elbowY;
+      forearm.rotation.z = side * 0.05;
+      armPivot.add(forearm);
+
+      // Dłoń — spłaszczona kula w kolorze skóry
+      const wristY = elbowY - spanOf(forearmLen, forearmRad);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 12), SKIN);
+      hand.position.y = wristY;
+      hand.scale.set(0.8, 1.15, 0.6);
+      armPivot.add(hand);
+
+      this.armPivots.push(armPivot);
+
+      // ================= NOGA =================
+      const legPivot = new THREE.Group();
+      legPivot.position.set(side * 0.1, hipY, 0);
+      g.add(legPivot);
+
+      // Staw biodrowy — spaja miednicę z udem
+      const hipJoint = new THREE.Mesh(new THREE.SphereGeometry(0.072, 14, 12), BODY);
+      legPivot.add(hipJoint);
+
+      const thigh = segment(thighLen, thighRad, BODY);
+      legPivot.add(thigh);
+
+      const kneeLocalY = -spanOf(thighLen, thighRad);
+      const kneeJoint = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), BODY);
+      kneeJoint.position.y = kneeLocalY;
+      legPivot.add(kneeJoint);
+
+      const shin = segment(shinLen, shinRad, BODY);
+      shin.position.y = kneeLocalY;
+      legPivot.add(shin);
+
+      const ankleLocalY = kneeLocalY - spanOf(shinLen, shinRad);
+      const ankleJoint = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), BODY);
+      ankleJoint.position.y = ankleLocalY;
+      legPivot.add(ankleJoint);
+
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, footH, 0.19), BODY);
+      foot.position.set(0, ankleLocalY - footH * 0.35, 0.045);
+      legPivot.add(foot);
+
+      this.legPivots.push(legPivot);
     }
 
     g.visible = false; // widoczny tylko w TPP
