@@ -31,6 +31,12 @@ const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
 const MAX_PIXEL_RATIO = IS_MOBILE ? 1 : 2;
 const TARGET_FPS = IS_MOBILE ? 30 : 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
+// Telefon rysuje tło w mniejszej rozdzielczości wewnętrznej (canvas jest
+// mimo to rozciągnięty przez CSS na cały ekran) — mniej pikseli do
+// zacieniowania w shaderze siatki i linii gogli = mniej pracy dla GPU.
+// Okno wyboru widoku (#intro) jest zwykłym DOM-em, więc jego rozmiar
+// się nie zmienia — skaluje się wyłącznie renderowane tło 3D.
+const RENDER_SCALE = IS_MOBILE ? 0.6 : 1;
 
 // --- Shader siatki w tle (ten sam efekt co w poprzednim panelu admina) ---
 const GRID_VERTEX = `
@@ -98,8 +104,14 @@ export function init(containerId = "canvas-container") {
     powerPreference: "high-performance",
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
-  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight);
   mountEl.appendChild(renderer.domElement);
+  // Canvas ma zawsze wypełniać kontener wizualnie (przez CSS), niezależnie
+  // od tego, w jak małej rozdzielczości faktycznie rysujemy bufor — dzięki
+  // temu zmniejszenie RENDER_SCALE nie zmienia widocznego rozmiaru tła.
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
+  renderer.domElement.style.display = "block";
+  applyRendererSize();
 
   buildGrid();
 
@@ -236,11 +248,21 @@ function onConfigChange(e) {
   }
 }
 
-function onResize() {
+function applyRendererSize() {
   if (!mountEl || !camera || !renderer) return;
-  camera.aspect = mountEl.clientWidth / mountEl.clientHeight;
+  const w = mountEl.clientWidth;
+  const h = mountEl.clientHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight);
+  // `false` = nie nadpisuj CSS width/height canvasu (ustawiliśmy je ręcznie
+  // na 100%) — wewnętrzny bufor rysowania jest mniejszy niż ekran,
+  // przeglądarka go tylko skaluje, co jest dużo tańsze niż rysowanie
+  // każdego piksela ekranu.
+  renderer.setSize(w * RENDER_SCALE, h * RENDER_SCALE, false);
+}
+
+function onResize() {
+  applyRendererSize();
 }
 
 function animate(now) {
