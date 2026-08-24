@@ -286,18 +286,37 @@ vrBtn.addEventListener('click', async () => {
   document.getElementById('exit-vr').classList.remove('hidden');
 });
 
-document.getElementById('exit-vr').addEventListener('click', () => {
-  cardboard.disable();
-  inVR = false;
-  controls.player.set(rig.position.x, 0, rig.position.z);
-  rig.position.set(0, 0, 0);
-  camera.rotation.set(0, 0, 0);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  document.getElementById('reticle-ring').style.display = 'none';
-  document.getElementById('exit-vr').classList.add('hidden');
+document.getElementById('exit-vr').addEventListener('click', () => exitToIntro());
+
+// Wyjście z metaversu do ekranu startowego pod klawiszem Esc — działa
+// zarówno w trybie FPP/TPP (odblokowuje kursor, chowa HUD), jak i w VR
+// (dodatkowo wyłącza tryb cardboard, tak jak przycisk "Wyjdź z VR").
+function exitToIntro() {
+  const intro = document.getElementById('intro');
+  if (!intro.classList.contains('hidden')) return; // już jesteśmy na starcie
+
+  if (inVR) {
+    cardboard.disable();
+    inVR = false;
+    controls.player.set(rig.position.x, 0, rig.position.z);
+    rig.position.set(0, 0, 0);
+    camera.rotation.set(0, 0, 0);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    document.getElementById('reticle-ring').style.display = 'none';
+    document.getElementById('exit-vr').classList.add('hidden');
+  }
+
+  if (document.pointerLockElement === renderer.domElement) {
+    document.exitPointerLock();
+  }
+
+  document.getElementById('joystick-base').classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
-  document.getElementById('intro').classList.remove('hidden');
-  
+  intro.classList.remove('hidden');
   renderer.domElement.style.display = 'none';
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitToIntro();
 });
