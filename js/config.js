@@ -13,7 +13,6 @@ const DEFAULTS = {
     tiltDirection: 'front-right',
     tiltAngle: 15,
     scale: 1.5,
-    // Nowe pola dla tapet
     wallpaperEnabled: false,
     wallpaperIndex: 0,
     wallpaperBrightness: 1.0,
