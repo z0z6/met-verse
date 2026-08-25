@@ -11,15 +11,29 @@ import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
 import { initMobileControls } from './mobileControls.js';
 
+// Wykrywanie urządzenia mobilnego — ta sama logika (i ten sam wynik) co w
+// js/vr-headset-bg.js, żeby ekran startowy i właściwa galeria zawsze się
+// zgadzały co do tego, czy jesteśmy "na telefonie".
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111114);
 scene.fog = new THREE.Fog(0x111114, 14, 34);
 
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.05, 100);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Na telefonie: bez antyaliasingu i z ograniczonym pixelRatio — to najdroższe
+// dla GPU ustawienia, a w trybie VR (cardboard) scena i tak renderuje się
+// DWA razy na klatkę (lewe/prawe oko), więc koszt się podwaja. Ograniczenie
+// tych dwóch rzeczy to główny czynnik odpowiedzialny za płynność obrotu
+// głowy w goglach VR na słabszych telefonach.
+const renderer = new THREE.WebGLRenderer({
+  antialias: !IS_MOBILE,
+  powerPreference: 'high-performance',
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1 : 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
@@ -151,7 +165,7 @@ const TELEPORT_DWELL = 2.2;
 const cardboard = new CardboardMode(renderer, camera);
 let inVR = false;
 
-const isMobileDevice = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
+const isMobileDevice = IS_MOBILE;
 const vrBtn = document.getElementById('start-vr');
 if (!isMobileDevice) {
   vrBtn.disabled = true;
@@ -160,9 +174,15 @@ if (!isMobileDevice) {
 }
 
 // Bezpieczny Promień Teleportacji VR (Zabezpieczenie przed przechodzeniem przez ściany)
+// Wektory pomocnicze tworzone RAZ, poza pętlą animacji — w VR ta funkcja
+// odpala się co klatkę, a tworzenie nowych obiektów THREE.Vector3 60x/s
+// (a w stereo efektywnie jeszcze częściej) niepotrzebnie obciąża GC i bywa
+// jedną z przyczyn mikro-przycięć przy obrocie głową na telefonach.
+const _gazeDir = new THREE.Vector3();
+const _gazeOrigin = new THREE.Vector3();
 function updateGazeTeleport(dt) {
-  const dir = new THREE.Vector3();
-  const origin = new THREE.Vector3();
+  const dir = _gazeDir;
+  const origin = _gazeOrigin;
   camera.getWorldDirection(dir);
   camera.getWorldPosition(origin);
   const fill = document.getElementById('reticle-fill');
@@ -200,10 +220,12 @@ function updateGazeTeleport(dt) {
   fill.style.height = '0%';
 }
 
+const _captionDir = new THREE.Vector3();
+const _captionOrigin = new THREE.Vector3();
 function updateCaption() {
-  const dir = new THREE.Vector3();
+  const dir = _captionDir;
   camera.getWorldDirection(dir);
-  const origin = new THREE.Vector3();
+  const origin = _captionOrigin;
   camera.getWorldPosition(origin);
   raycaster.set(origin, dir);
   const targets = interactiveArtworks.flatMap(g => g.children);

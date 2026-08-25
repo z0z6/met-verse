@@ -26,6 +26,12 @@ export class CardboardMode {
     this._quat = new THREE.Quaternion();
     this._hasSensor = false;
 
+    // Obiekty pomocnicze tworzone raz — render() odpala się co klatkę
+    // (a w stereo de facto dwa razy renderuje scenę), więc tworzenie nowego
+    // THREE.Vector2 przy każdym wywołaniu zbędnie obciąża GC i bywa
+    // przyczyną mikro-przycięć widocznych właśnie przy obrocie głową.
+    this._sizeVec = new THREE.Vector2();
+
     this._onOrient = (e) => {
       if (e.alpha === null) return;
       this._hasSensor = true;
@@ -64,7 +70,7 @@ export class CardboardMode {
       this.camera.quaternion.copy(this.getOrientationQuaternion());
     }
 
-    const size = new THREE.Vector2();
+    const size = this._sizeVec;
     this.renderer.getSize(size);
     const halfW = size.x / 2;
 
@@ -100,7 +106,7 @@ export class CardboardMode {
   // Wywołaj przy wejściu do VR i przy każdej zmianie rozmiaru okna w trakcie
   // sesji VR — bez tego pierwsza klatka może użyć jeszcze nieprawidłowych proporcji.
   updateAspect() {
-    const size = new THREE.Vector2();
+    const size = this._sizeVec;
     this.renderer.getSize(size);
     this.camera.aspect = (size.x / 2) / size.y;
     this.camera.updateProjectionMatrix();
