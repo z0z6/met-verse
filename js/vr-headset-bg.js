@@ -18,10 +18,29 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Config } from "./config.js";
 
 const LINE_COLOR = 0x000000;
-const LINE_OPACITY = 0.85;
-const EDGE_ANGLE_THRESHOLD = 15;
 const MODEL_TARGET_SIZE = 2.4;
 const MODEL_URL = "./models/vr-headset.glb";
+
+// Proste wykrycie telefonu/słabszego GPU — ograniczamy wtedy rozdzielczość
+// renderowania, wyłączamy antyaliasing i przycinamy FPS, żeby obrót
+// modelu nie przycinał się na Androidzie.
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+const MAX_PIXEL_RATIO = IS_MOBILE ? 1 : 2;
+const TARGET_FPS = IS_MOBILE ? 30 : 60;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
+// Telefon rysuje tło w mniejszej rozdzielczości wewnętrznej (canvas jest
+// mimo to rozciągnięty przez CSS na cały ekran) — mniej pikseli do
+// zacieniowania w shaderze siatki i liniach gogli = mniej pracy dla GPU.
+// Okno wyboru widoku (#intro) jest zwykłym DOM-em, więc jego rozmiar
+// się nie zmienia — skaluje się wyłącznie renderowane tło 3D.
+const RENDER_SCALE = IS_MOBILE ? 0.5 : 1;
+// Wyższy próg = mniej krawędzi w wireframe (mniej wierzchołków do policzenia
+// na klatkę) — na telefonie i tak niezauważalne przy tej skali gogli.
+const EDGE_ANGLE_THRESHOLD = IS_MOBILE ? 28 : 15;
+// Przezroczyste linie wymagają blendingu (dodatkowy koszt GPU, sortowanie);
+// na telefonie rysujemy je w pełni kryjąco — taniej, różnica wizualna minimalna.
+const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 
 // --- Shader siatki w tle (ten sam efekt co w poprzednim panelu admina) ---
 const GRID_VERTEX = `
@@ -55,7 +74,15 @@ let mountEl, scene, camera, renderer;
 let rig, modelGroup;
 let gridMesh, gridMaterial;
 let animId, clock, time = 0;
+let lastFrameTime = 0;
 let baseScaleFactor = 1; // skala normalizująca model do MODEL_TARGET_SIZE, wyliczana raz po wczytaniu
+
+// Wartości odczytywane co klatkę w animate() cache'ujemy w zmiennych
+// zamiast wołać Config.get() (czyli localStorage.getItem) 30-60x/s —
+// to odczuwalnie odciąża główny wątek JS na słabszych telefonach.
+let cachedRotationSpeed = 0;
+let cachedRotationDirection = 1;
+let cachedGridEnabled = true;
 
 export function init(containerId = "canvas-container") {
   mountEl = document.getElementById(containerId);
@@ -75,10 +102,20 @@ export function init(containerId = "canvas-container") {
   );
   camera.position.set(0, 0, 4.2);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight);
+  renderer = new THREE.WebGLRenderer({
+    antialias: !IS_MOBILE,
+    alpha: true,
+    powerPreference: "high-performance",
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
   mountEl.appendChild(renderer.domElement);
+  // Canvas ma zawsze wypełniać kontener wizualnie (przez CSS), niezależnie
+  // od tego, w jak małej rozdzielczości faktycznie rysujemy bufor — dzięki
+  // temu zmniejszenie RENDER_SCALE nie zmienia widocznego rozmiaru tła.
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
+  renderer.domElement.style.display = "block";
+  applyRendererSize();
 
   buildGrid();
 
@@ -94,18 +131,38 @@ export function init(containerId = "canvas-container") {
     (gltf) => {
       const lineMaterial = new THREE.LineBasicMaterial({
         color: LINE_COLOR,
-        transparent: true,
+        transparent: LINE_OPACITY < 1,
         opacity: LINE_OPACITY,
       });
+
+      // Zbieramy krawędzie wszystkich części modelu do JEDNEJ geometrii,
+      // żeby całe gogle rysowały się w jednym draw call. Osobny LineSegments
+      // per część modelu (jak w wersji bez optymalizacji) mnoży liczbę
+      // wywołań renderowania i to właśnie ono najbardziej przycina się
+      // na słabszych GPU w telefonach.
+      const mergedPositions = [];
+      const v = new THREE.Vector3();
 
       gltf.scene.traverse((child) => {
         if (child.isMesh && child.geometry) {
           const edges = new THREE.EdgesGeometry(child.geometry, EDGE_ANGLE_THRESHOLD);
-          const lineSegments = new THREE.LineSegments(edges, lineMaterial);
-          lineSegments.applyMatrix4(child.matrixWorld);
-          modelGroup.add(lineSegments);
+          const posAttr = edges.getAttribute('position');
+          child.updateWorldMatrix(true, false);
+          for (let i = 0; i < posAttr.count; i++) {
+            v.fromBufferAttribute(posAttr, i).applyMatrix4(child.matrixWorld);
+            mergedPositions.push(v.x, v.y, v.z);
+          }
+          edges.dispose();
         }
       });
+
+      const mergedGeometry = new THREE.BufferGeometry();
+      mergedGeometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(mergedPositions, 3)
+      );
+      const lineSegments = new THREE.LineSegments(mergedGeometry, lineMaterial);
+      modelGroup.add(lineSegments);
 
       const box = new THREE.Box3().setFromObject(modelGroup);
       const center = box.getCenter(new THREE.Vector3());
@@ -123,8 +180,11 @@ export function init(containerId = "canvas-container") {
   window.addEventListener("resize", onResize);
   window.addEventListener("configchange", onConfigChange);
 
-  clock = new THREE.Clock();
-  animate();
+  cachedRotationSpeed = Config.get('rotationSpeed');
+  cachedRotationDirection = Config.get('rotationDirection');
+  cachedGridEnabled = Config.get('gridEnabled');
+
+  startLoop();
 }
 
 function buildGrid() {
@@ -141,7 +201,7 @@ function buildGrid() {
     fragmentShader: GRID_FRAGMENT,
     transparent: true,
     depthWrite: false,
-    side: THREE.DoubleSide
+    side: THREE.FrontSide
   });
   gridMesh = new THREE.Mesh(geometry, gridMaterial);
   gridMesh.position.z = -8;
@@ -179,7 +239,9 @@ function onConfigChange(e) {
   if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
   if (key === 'scale') applyScale();
 
-  if (key === 'gridEnabled' && gridMesh) gridMesh.visible = value;
+  if (key === 'gridEnabled' && gridMesh) { gridMesh.visible = value; cachedGridEnabled = value; }
+  if (key === 'rotationSpeed') cachedRotationSpeed = value;
+  if (key === 'rotationDirection') cachedRotationDirection = value;
   if (gridMaterial) {
     if (key === 'gridDensity') gridMaterial.uniforms.uDensity.value = value;
     if (key === 'gridThickness') gridMaterial.uniforms.uThickness.value = value;
@@ -189,30 +251,63 @@ function onConfigChange(e) {
   }
 }
 
-function onResize() {
+function applyRendererSize() {
   if (!mountEl || !camera || !renderer) return;
-  camera.aspect = mountEl.clientWidth / mountEl.clientHeight;
+  const w = mountEl.clientWidth;
+  const h = mountEl.clientHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight);
+  // `false` = nie nadpisuj CSS width/height canvasu (ustawiliśmy je ręcznie
+  // na 100%) — wewnętrzny bufor rysowania jest mniejszy niż ekran,
+  // przeglądarka go tylko skaluje, co jest dużo tańsze niż rysowanie
+  // każdego piksela ekranu.
+  renderer.setSize(w * RENDER_SCALE, h * RENDER_SCALE, false);
 }
 
-function animate() {
-  animId = requestAnimationFrame(animate);
+function onResize() {
+  applyRendererSize();
+}
+
+function renderFrame() {
   const delta = clock.getDelta();
   time += delta;
 
-  if (gridMaterial && Config.get('gridEnabled')) gridMaterial.uniforms.uTime.value = time;
+  if (gridMaterial && cachedGridEnabled) gridMaterial.uniforms.uTime.value = time;
 
   // Rotacja: kierunek (Prawo/Lewo z panelu) + prędkość (rad/s)
-  const speed = Config.get('rotationSpeed');
-  const dir = Config.get('rotationDirection');
-  if (modelGroup) modelGroup.rotation.y -= dir * speed * delta;
+  if (modelGroup) modelGroup.rotation.y -= cachedRotationDirection * cachedRotationSpeed * delta;
 
   renderer.render(scene, camera);
 }
 
+// Desktop: zwykły rAF (dopasowuje się do odświeżania ekranu, płynne 60 fps).
+// Telefon: pętla oparta o setTimeout z realnym interwałem 30 fps — mniej
+// rzeczywistych "wybudzeń" JS na sekundę niż rAF+pomijanie klatek (rAF i tak
+// budzi się z pełną częstotliwością odświeżania, tylko część klatek pomija
+// renderowanie) — mniej rywalizacji z kompozytowaniem panelu startowego (blur).
+function animate(now) {
+  animId = requestAnimationFrame(animate);
+  if (now !== undefined) {
+    const elapsed = now - lastFrameTime;
+    if (elapsed < FRAME_INTERVAL) return;
+    lastFrameTime = now - (elapsed % FRAME_INTERVAL);
+  }
+  renderFrame();
+}
+
+function animateMobile() {
+  animId = setTimeout(animateMobile, FRAME_INTERVAL);
+  renderFrame();
+}
+
+function startLoop() {
+  clock = new THREE.Clock();
+  if (IS_MOBILE) animateMobile();
+  else animate();
+}
+
 export function destroy() {
-  if (animId) cancelAnimationFrame(animId);
+  if (animId) { cancelAnimationFrame(animId); clearTimeout(animId); }
   window.removeEventListener('resize', onResize);
   window.removeEventListener('configchange', onConfigChange);
   if (renderer) renderer.dispose();
