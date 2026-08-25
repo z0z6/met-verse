@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Galeria — Metavers</title>
 <link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
 <script type="importmap">
 {
   "imports": {
@@ -100,8 +101,21 @@ async function loadConfigAndInit() {
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
-<!-- Główna logika metaversum -->
-<script type="module" src="src/main.js"></script>
+<!-- Główna logika metaversum — importowana z niskim priorytetem (dopiero
+     gdy przeglądarka jest bezczynna, najpóźniej po 1,2s), żeby pobieranie
+     tekstur pomieszczeń i 24 obrazów z galerii nie konkurowało o pasmo
+     i CPU z tym, co faktycznie trzeba pokazać jak najszybciej: ekranem
+     startowym (config.json, tapeta, model gogli VR w tle). Przyciski
+     i tak zdążą się "uzbroić" w main.js, zanim ktokolwiek fizycznie
+     kliknie — a strona startowa renderuje się zauważalnie szybciej. -->
+<script>
+  function loadGallery() { import('./src/main.js'); }
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(loadGallery, { timeout: 1200 });
+  } else {
+    window.addEventListener('load', loadGallery);
+  }
+</script>
 
 </body>
 </html>
