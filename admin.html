@@ -152,6 +152,39 @@
             </div>
 
             <div class="control-group">
+                <label>Tapeta w tle (pod goglami VR)</label>
+                <div class="control-row">
+                    <span>Włącz tapetę</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="wallpaperEnabledToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="wallpaperOptions" style="flex-direction: column; gap: 10px; margin-top: 12px; opacity: 0.5; pointer-events: none;">
+                    <div class="control-row">
+                        <span style="font-size: 0.85rem; min-width: 70px;">Obraz</span>
+                        <select id="wallpaperSelect" style="flex: 1;">
+                            <option value="0">Tapeta 1</option>
+                            <option value="1">Tapeta 2</option>
+                            <option value="2">Tapeta 3</option>
+                            <option value="3">Tapeta 4</option>
+                            <option value="4">Tapeta 5</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <span style="font-size: 0.85rem; min-width: 70px;">Jasność</span>
+                        <input type="range" id="wallpaperBrightnessRange" min="0.1" max="2" step="0.05">
+                        <span class="value-badge" id="wallpaperBrightnessVal">1.00</span>
+                    </div>
+                    <div class="control-row">
+                        <span style="font-size: 0.85rem; min-width: 70px;">Rozmycie</span>
+                        <input type="range" id="wallpaperBlurRange" min="0" max="50" step="1">
+                        <span class="value-badge" id="wallpaperBlurVal">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
                 <label>Siatka w tle</label>
                 <div class="control-row">
                     <span>Włącz siatkę</span>
