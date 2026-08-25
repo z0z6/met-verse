@@ -64,11 +64,12 @@ body > canvas {
     width: 92vw;
     padding: 16px 16px 18px;
     border-radius: 20px;
-    /* mniej rozmycia = mniejszy koszt kompozycji dla GPU telefonu,
-       dodatkowo pozwala nieco przeświecać goglom przez panel */
-    background: rgba(15,8,22,.6);
-    backdrop-filter: blur(10px) saturate(140%);
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    /* Bez backdrop-filter na telefonie: rozmycie tła to jeden z droższych
+       efektów kompozytora, a tutaj musi liczyć się non-stop nad animującym
+       się w tle WebGL — zwykłe, bardziej kryjące tło jest dużo tańsze
+       i wciąż dobrze czytelne. */
+    background: rgba(12,7,18,.86);
+    border: 1px solid rgba(255,255,255,.12);
   }
   .intro-panel h1 { font-size: 1.25rem; margin-bottom: 4px; }
   .intro-panel p { font-size: .8rem; margin-bottom: 14px; line-height: 1.35; }
@@ -79,6 +80,9 @@ body > canvas {
   }
   .mode-btn .icon { width: 20px; height: 20px; }
   .mode-btn.long-label { font-size: .58rem; }
+  /* Blur na każdym z 3 przycisków osobno, non-stop nad animującym się tłem,
+     dokłada się do kosztu kompozytora — na telefonie z tego rezygnujemy. */
+  .mode-btn, .hint a { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .hint { font-size: .64rem; margin-top: 6px; }
   .hint:last-of-type { margin-top: 8px; }
 }
