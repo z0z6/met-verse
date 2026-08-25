@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { ROOMS, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS, BOUNDS } from './collision.js';
 import { loadFloorMaterial, loadWallMaterial, loadCeilingMaterial, loadRugMaterial } from './textures.js';
 
+// Ta sama detekcja co w main.js / artworks.js / vr-headset-bg.js.
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+
 const ROOM_TINTS = [0xfff0e0, 0xffffff, 0xe6f0ff]; // ciepły / neutralny / chłodny akcent światła
 
 export const ROOM_HEIGHT = 5.5;
@@ -81,8 +85,12 @@ export function buildRoom(scene) {
     spot.target.position.set(cx, 0, 0);
     scene.add(spot, spot.target);
 
-    // dodatkowe boczne punkty światła — łagodzą ostre cienie, doświetlają ściany
-    for (const zOff of [-DEPTH / 3.2, DEPTH / 3.2]) {
+    // dodatkowe boczne punkty światła — łagodzą ostre cienie, doświetlają ściany.
+    // Na mobile tylko 1 zamiast 2 na salę — w VR (stereo) każde dodatkowe
+    // światło realtime kosztuje podwójnie (dwa renderowania na klatkę),
+    // a to jedno z trzech miejsc, gdzie zbierały się zbędne światła.
+    const fillOffsets = IS_MOBILE ? [0] : [-DEPTH / 3.2, DEPTH / 3.2];
+    for (const zOff of fillOffsets) {
       const fill = new THREE.PointLight(0xfff6ea, 12, 9, 2);
       fill.position.set(cx, H - 1.2, zOff);
       scene.add(fill);

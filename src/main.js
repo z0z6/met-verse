@@ -34,7 +34,12 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1 : 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// ACESFilmicToneMapping wygląda najlepiej, ale to kilka operacji
+// matematycznych liczonych dla KAŻDEGO piksela KAŻDEGO obiektu — w VR
+// (stereo, podwójne renderowanie) ten koszt się podwaja. Na mobile
+// przechodzimy na dużo tańsze LinearToneMapping (praktycznie tylko
+// mnożenie przez ekspozycję).
+renderer.toneMapping = IS_MOBILE ? THREE.LinearToneMapping : THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 

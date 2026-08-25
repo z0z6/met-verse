@@ -1,12 +1,20 @@
 import * as THREE from 'three';
 
+// Ta sama detekcja co w pozostałych plikach src/.
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+
 const loader = new THREE.TextureLoader();
 
 function load(path, colorSpace) {
   const tex = loader.load(path);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   if (colorSpace) tex.colorSpace = colorSpace;
-  tex.anisotropy = 8;
+  // Filtrowanie anizotropowe poprawia ostrość tekstur widzianych pod kątem
+  // (podłoga, ściany), ale kosztuje próbkowań GPU proporcjonalnie do
+  // poziomu — na mobile, zwłaszcza w VR (podwójne renderowanie stereo),
+  // ograniczamy je zamiast maksować do 8x jak na desktopie.
+  tex.anisotropy = IS_MOBILE ? 2 : 8;
   return tex;
 }
 
