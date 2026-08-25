@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { ROOMS, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS, BOUNDS } from './collision.js';
 import { loadFloorMaterial, loadWallMaterial, loadCeilingMaterial, loadRugMaterial } from './textures.js';
 
-export const ROOM_NAMES = ['Sala zachodnia', 'Sala główna', 'Sala wschodnia'];
 const ROOM_TINTS = [0xfff0e0, 0xffffff, 0xe6f0ff]; // ciepły / neutralny / chłodny akcent światła
 
 export const ROOM_HEIGHT = 5.5;
