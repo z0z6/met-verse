@@ -1,16 +1,20 @@
 {
-  "bgColor": "#ffffff",
+  "bgColor": "#050510",
   "particleColor": "#ffffff",
   "multiColor": false,
   "rotationDirection": 1,
-  "rotationSpeed": 0.1,
+  "rotationSpeed": 0.3,
   "gridEnabled": true,
-  "gridColor": "#000000",
-  "gridDensity": 10,
-  "gridThickness": 0.5,
-  "gridSpeedX": -66,
-  "gridSpeedY": -91,
+  "gridColor": "#00ffff",
+  "gridDensity": 8,
+  "gridThickness": 0.25,
+  "gridSpeedX": 5,
+  "gridSpeedY": 0,
   "tiltDirection": "front-right",
   "tiltAngle": 15,
-  "scale": 1.07
+  "scale": 1.5,
+  "wallpaperEnabled": false,
+  "wallpaperIndex": 0,
+  "wallpaperBrightness": 1.0,
+  "wallpaperBlur": 0
 }
