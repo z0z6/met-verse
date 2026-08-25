@@ -1,18 +1,3 @@
-// js/vr-headset-bg.js
-// ---------------------------------------------------------------
-// Tło: gogle VR jako czarny wireframe (zbudowany z prawdziwego
-// modelu .glb przez GLTFLoader + EdgesGeometry), przechylone i
-// powoli obracające się. W pełni sterowane przez Config
-// (js/config.js) — kolor tła, kierunek/kąt wychylenia, skala,
-// rotacja (kierunek + prędkość) oraz siatka w tle (włącz/wyłącz,
-// kolor, zagęszczenie, grubość linii, prędkość X/Y).
-//
-// Podpina się pod istniejący #canvas-container z index.html.
-// Korzysta z importmapu już zdefiniowanego w index.html:
-//   "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-//   "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-// ---------------------------------------------------------------
-
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Config } from "./config.js";
@@ -21,28 +6,23 @@ const LINE_COLOR = 0x000000;
 const MODEL_TARGET_SIZE = 2.4;
 const MODEL_URL = "./models/vr-headset.glb";
 
-// Proste wykrycie telefonu/słabszego GPU — ograniczamy wtedy rozdzielczość
-// renderowania, wyłączamy antyaliasing i przycinamy FPS, żeby obrót
-// modelu nie przycinał się na Androidzie.
+const WALLPAPERS = [
+    './wallpapers/wallpaper1.jpg',
+    './wallpapers/wallpaper2.jpg',
+    './wallpapers/wallpaper3.jpg',
+    './wallpapers/wallpaper4.jpg',
+    './wallpapers/wallpaper5.jpg'
+];
+
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
   || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
 const MAX_PIXEL_RATIO = IS_MOBILE ? 1 : 2;
 const TARGET_FPS = IS_MOBILE ? 30 : 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
-// Telefon rysuje tło w mniejszej rozdzielczości wewnętrznej (canvas jest
-// mimo to rozciągnięty przez CSS na cały ekran) — mniej pikseli do
-// zacieniowania w shaderze siatki i liniach gogli = mniej pracy dla GPU.
-// Okno wyboru widoku (#intro) jest zwykłym DOM-em, więc jego rozmiar
-// się nie zmienia — skaluje się wyłącznie renderowane tło 3D.
 const RENDER_SCALE = IS_MOBILE ? 0.5 : 1;
-// Wyższy próg = mniej krawędzi w wireframe (mniej wierzchołków do policzenia
-// na klatkę) — na telefonie i tak niezauważalne przy tej skali gogli.
 const EDGE_ANGLE_THRESHOLD = IS_MOBILE ? 28 : 15;
-// Przezroczyste linie wymagają blendingu (dodatkowy koszt GPU, sortowanie);
-// na telefonie rysujemy je w pełni kryjąco — taniej, różnica wizualna minimalna.
 const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 
-// --- Shader siatki w tle (ten sam efekt co w poprzednim panelu admina) ---
 const GRID_VERTEX = `
     varying vec2 vUv;
     void main() {
@@ -73,13 +53,11 @@ const GRID_FRAGMENT = `
 let mountEl, scene, camera, renderer;
 let rig, modelGroup;
 let gridMesh, gridMaterial;
+let wallpaperLayer;
 let animId, clock, time = 0;
 let lastFrameTime = 0;
-let baseScaleFactor = 1; // skala normalizująca model do MODEL_TARGET_SIZE, wyliczana raz po wczytaniu
+let baseScaleFactor = 1;
 
-// Wartości odczytywane co klatkę w animate() cache'ujemy w zmiennych
-// zamiast wołać Config.get() (czyli localStorage.getItem) 30-60x/s —
-// to odczuwalnie odciąża główny wątek JS na słabszych telefonach.
 let cachedRotationSpeed = 0;
 let cachedRotationDirection = 1;
 let cachedGridEnabled = true;
@@ -90,6 +68,24 @@ export function init(containerId = "canvas-container") {
     console.error(`vr-headset-bg: nie znaleziono #${containerId}`);
     return;
   }
+
+  // Ustawiamy kontener jako względny, żeby warstwa tapety mogła być pod canvasem
+  mountEl.style.position = 'relative';
+
+  // Tworzymy warstwę tapety (pod canvasem Three.js)
+  wallpaperLayer = document.createElement('div');
+  wallpaperLayer.id = 'wallpaper-layer';
+  wallpaperLayer.style.cssText = `
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+    transition: opacity 0.4s ease;
+  `;
+  mountEl.appendChild(wallpaperLayer);
 
   scene = new THREE.Scene();
   scene.background = null;
@@ -109,12 +105,13 @@ export function init(containerId = "canvas-container") {
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
   mountEl.appendChild(renderer.domElement);
-  // Canvas ma zawsze wypełniać kontener wizualnie (przez CSS), niezależnie
-  // od tego, w jak małej rozdzielczości faktycznie rysujemy bufor — dzięki
-  // temu zmniejszenie RENDER_SCALE nie zmienia widocznego rozmiaru tła.
-  renderer.domElement.style.width = "100%";
-  renderer.domElement.style.height = "100%";
-  renderer.domElement.style.display = "block";
+  renderer.domElement.style.cssText = `
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+    z-index: 1;
+  `;
   applyRendererSize();
 
   buildGrid();
@@ -135,11 +132,6 @@ export function init(containerId = "canvas-container") {
         opacity: LINE_OPACITY,
       });
 
-      // Zbieramy krawędzie wszystkich części modelu do JEDNEJ geometrii,
-      // żeby całe gogle rysowały się w jednym draw call. Osobny LineSegments
-      // per część modelu (jak w wersji bez optymalizacji) mnoży liczbę
-      // wywołań renderowania i to właśnie ono najbardziej przycina się
-      // na słabszych GPU w telefonach.
       const mergedPositions = [];
       const v = new THREE.Vector3();
 
@@ -184,6 +176,8 @@ export function init(containerId = "canvas-container") {
   cachedRotationDirection = Config.get('rotationDirection');
   cachedGridEnabled = Config.get('gridEnabled');
 
+  applyWallpaper();
+
   startLoop();
 }
 
@@ -209,7 +203,6 @@ function buildGrid() {
   scene.add(gridMesh);
 }
 
-// Kierunek i kąt wychylenia gogli (ten sam schemat co w poprzednim panelu admina)
 function applyTilt() {
   if (!rig) return;
   const tiltDir = Config.get('tiltDirection');
@@ -225,11 +218,29 @@ function applyTilt() {
   }
 }
 
-// Skala = normalizacja rozmiaru modelu * mnożnik użytkownika z panelu
 function applyScale() {
   if (!modelGroup) return;
   const userScale = Config.get('scale');
   modelGroup.scale.setScalar(baseScaleFactor * userScale);
+}
+
+function applyWallpaper() {
+  if (!wallpaperLayer) return;
+  const enabled = Config.get('wallpaperEnabled');
+  const index = Config.get('wallpaperIndex');
+  const brightness = Config.get('wallpaperBrightness');
+  const blur = Config.get('wallpaperBlur');
+
+  if (enabled) {
+    const path = WALLPAPERS[index] || WALLPAPERS[0];
+    wallpaperLayer.style.backgroundImage = `url('${path}')`;
+    wallpaperLayer.style.opacity = '1';
+    wallpaperLayer.style.filter = `brightness(${brightness}) blur(${blur}px)`;
+    wallpaperLayer.style.webkitFilter = `brightness(${brightness}) blur(${blur}px)`;
+  } else {
+    wallpaperLayer.style.opacity = '0';
+    wallpaperLayer.style.filter = 'none';
+  }
 }
 
 function onConfigChange(e) {
@@ -249,6 +260,11 @@ function onConfigChange(e) {
     if (key === 'gridSpeedX') gridMaterial.uniforms.uSpeed.value.x = value / 1000;
     if (key === 'gridSpeedY') gridMaterial.uniforms.uSpeed.value.y = value / 1000;
   }
+
+  // Tapeta - reagujemy na wszystkie jej parametry
+  if (['wallpaperEnabled', 'wallpaperIndex', 'wallpaperBrightness', 'wallpaperBlur'].includes(key)) {
+    applyWallpaper();
+  }
 }
 
 function applyRendererSize() {
@@ -257,10 +273,6 @@ function applyRendererSize() {
   const h = mountEl.clientHeight;
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  // `false` = nie nadpisuj CSS width/height canvasu (ustawiliśmy je ręcznie
-  // na 100%) — wewnętrzny bufor rysowania jest mniejszy niż ekran,
-  // przeglądarka go tylko skaluje, co jest dużo tańsze niż rysowanie
-  // każdego piksela ekranu.
   renderer.setSize(w * RENDER_SCALE, h * RENDER_SCALE, false);
 }
 
@@ -274,17 +286,11 @@ function renderFrame() {
 
   if (gridMaterial && cachedGridEnabled) gridMaterial.uniforms.uTime.value = time;
 
-  // Rotacja: kierunek (Prawo/Lewo z panelu) + prędkość (rad/s)
   if (modelGroup) modelGroup.rotation.y -= cachedRotationDirection * cachedRotationSpeed * delta;
 
   renderer.render(scene, camera);
 }
 
-// Desktop: zwykły rAF (dopasowuje się do odświeżania ekranu, płynne 60 fps).
-// Telefon: pętla oparta o setTimeout z realnym interwałem 30 fps — mniej
-// rzeczywistych "wybudzeń" JS na sekundę niż rAF+pomijanie klatek (rAF i tak
-// budzi się z pełną częstotliwością odświeżania, tylko część klatek pomija
-// renderowanie) — mniej rywalizacji z kompozytowaniem panelu startowego (blur).
 function animate(now) {
   animId = requestAnimationFrame(animate);
   if (now !== undefined) {
@@ -310,5 +316,6 @@ export function destroy() {
   if (animId) { cancelAnimationFrame(animId); clearTimeout(animId); }
   window.removeEventListener('resize', onResize);
   window.removeEventListener('configchange', onConfigChange);
+  if (wallpaperLayer) wallpaperLayer.remove();
   if (renderer) renderer.dispose();
 }
