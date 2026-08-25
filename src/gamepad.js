@@ -27,6 +27,15 @@ export function readGamepadMove(gp) {
     if (gp.buttons[12] && gp.buttons[12].pressed) y = -1; // góra (przód)
     if (gp.buttons[13] && gp.buttons[13].pressed) y = 1;  // dół (tył)
   }
+  // Fallback dla bardzo prostych pilotów (np. taniego pilota VR Bluetooth
+  // z jednym-dwoma przyciskami) — sprawdzamy indeksy 0–3 jako umowny
+  // "select/OK/dowolny przycisk = ruch do przodu", niezależnie od tego,
+  // ile przycisków w sumie zgłasza urządzenie.
+  if (x === 0 && y === 0 && gp.buttons && gp.buttons.length > 0 && gp.buttons.length < 16) {
+    for (let i = 0; i < gp.buttons.length; i++) {
+      if (gp.buttons[i] && gp.buttons[i].pressed) { y = -1; break; }
+    }
+  }
   return { x, y };
 }
 

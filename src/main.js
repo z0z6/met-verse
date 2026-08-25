@@ -6,7 +6,7 @@ import {
   buildPottedPlant, buildBushyPlant, buildBench, buildBonsai, buildLamellaJamb, buildLamellaReveal,
 } from './furniture.js';
 import { ROOMS, OBSTACLES, resolveCollision, crossesSolidWall, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS, BOUNDS } from './collision.js';
-import { GalleryControls } from './controls.js';
+import { GalleryControls, keys } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
 import { initMobileControls } from './mobileControls.js';
@@ -245,6 +245,59 @@ function updateCaption() {
   }
 }
 
+// Ruch w VR na podstawie klawiatury — używamy tego samego globalnego
+// obiektu `keys`, którego już używa zwykłe sterowanie FPP/TPP (patrz
+// controls.js). Wiele tanich pilotów Bluetooth do gogli VR (w tym
+// większość pilotów typu "VR remote"/"selfie remote") NIE jest wykrywana
+// przez Gamepad API — parują się z telefonem jako zwykła klawiatura
+// Bluetooth i wysyłają np. strzałki. Bez tej funkcji tryb VR całkowicie
+// ignorował klawiaturę, więc taki pilot nie miał żadnego wpływu na ruch.
+const _kbDir = new THREE.Vector3();
+const _kbRight = new THREE.Vector3();
+const _kbMove = new THREE.Vector3();
+function applyKeyboardMovementVR(dt, speed, collisionFn) {
+  let fwd = 0, strafe = 0;
+  if (keys['w'] || keys['arrowup']) fwd += 1;
+  if (keys['s'] || keys['arrowdown']) fwd -= 1;
+  if (keys['a'] || keys['arrowleft']) strafe -= 1;
+  if (keys['d'] || keys['arrowright']) strafe += 1;
+  if (fwd === 0 && strafe === 0) return false;
+
+  camera.getWorldDirection(_kbDir);
+  _kbDir.y = 0;
+  _kbDir.normalize();
+  _kbRight.crossVectors(_kbDir, new THREE.Vector3(0, 1, 0)).normalize();
+
+  _kbMove.set(0, 0, 0)
+    .addScaledVector(_kbDir, fwd)
+    .addScaledVector(_kbRight, strafe)
+    .multiplyScalar(speed * dt);
+
+  const p = rig.position.clone().add(_kbMove);
+  collisionFn(p, 0.45);
+  rig.position.copy(p);
+  return true;
+}
+
+// Diagnostyka pilota Bluetooth — otwórz konsolę (zdalny debugging Chrome:
+// chrome://inspect na komputerze, telefon podłączony USB) i naciśnij
+// przyciski na pilocie. Pokaże się albo "gamepad connected" (wtedy pilot
+// JEST widziany jako gamepad — sprawdź w logu liczbę przycisków/osi
+// i daj znać, jeśli obecne indeksy D-pada [12–15] nie pasują), albo same
+// zdarzenia "keydown" (wtedy pilot działa jako klawiatura — zobacz jaki
+// dokładnie klawisz/kod się pojawia, jeśli powyższy fallback WASD/strzałki
+// mimo wszystko nie zadziała).
+window.addEventListener('gamepadconnected', (e) => {
+  console.log('[Pilot VR] gamepad podłączony:', e.gamepad.id,
+    '| przyciski:', e.gamepad.buttons.length, '| osie:', e.gamepad.axes.length);
+});
+window.addEventListener('gamepaddisconnected', (e) => {
+  console.log('[Pilot VR] gamepad odłączony:', e.gamepad.id);
+});
+window.addEventListener('keydown', (e) => {
+  if (inVR) console.log('[Pilot VR] keydown:', JSON.stringify(e.key), 'code:', e.code, 'keyCode:', e.keyCode);
+});
+
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (inVR) {
@@ -253,8 +306,13 @@ function animate() {
 
     const gp = getActiveGamepad();
     const reticle = document.getElementById('reticle-ring');
+    const collisionFn = (pos, r) => resolveCollision(pos, Math.max(r, 0.55), 1.0);
     if (gp) {
-      applyGamepadMovement(gp, camera, rig, dt, 2.4, (pos, r) => resolveCollision(pos, Math.max(r, 0.55), 1.0));
+      applyGamepadMovement(gp, camera, rig, dt, 2.4, collisionFn);
+      dwell = 0;
+      document.getElementById('reticle-fill').style.height = '0%';
+      reticle.style.display = 'none';
+    } else if (applyKeyboardMovementVR(dt, 2.4, collisionFn)) {
       dwell = 0;
       document.getElementById('reticle-fill').style.height = '0%';
       reticle.style.display = 'none';
