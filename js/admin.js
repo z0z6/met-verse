@@ -27,6 +27,21 @@ function updateUIFromConfig() {
     $('gridSpeedXVal').textContent = (Config.get('gridSpeedX') / 100).toFixed(2);
     $('gridSpeedY').value = Config.get('gridSpeedY');
     $('gridSpeedYVal').textContent = (Config.get('gridSpeedY') / 100).toFixed(2);
+
+    $('wallpaperEnabledToggle').checked = Config.get('wallpaperEnabled');
+    $('wallpaperSelect').value = Config.get('wallpaperIndex');
+    $('wallpaperBrightnessRange').value = Config.get('wallpaperBrightness');
+    $('wallpaperBrightnessVal').textContent = Config.get('wallpaperBrightness').toFixed(2);
+    $('wallpaperBlurRange').value = Config.get('wallpaperBlur');
+    $('wallpaperBlurVal').textContent = Config.get('wallpaperBlur');
+
+    toggleWallpaperOptions(Config.get('wallpaperEnabled'));
+}
+
+function toggleWallpaperOptions(enabled) {
+    const opts = $('wallpaperOptions');
+    opts.style.opacity = enabled ? '1' : '0.5';
+    opts.style.pointerEvents = enabled ? 'auto' : 'none';
 }
 
 function bindEvents() {
@@ -35,68 +50,73 @@ function bindEvents() {
         $('bgColorVal').textContent = e.target.value;
     });
 
-    $('tiltSelect').addEventListener('change', e => {
-        Config.set('tiltDirection', e.target.value);
-    });
-
+    $('tiltSelect').addEventListener('change', e => Config.set('tiltDirection', e.target.value));
     $('tiltAngleRange').addEventListener('input', e => {
         const val = parseInt(e.target.value);
         Config.set('tiltAngle', val);
         $('tiltAngleVal').textContent = val + '°';
     });
-
     $('scaleRange').addEventListener('input', e => {
         const val = parseInt(e.target.value) / 100;
         Config.set('scale', val);
         $('scaleVal').textContent = val.toFixed(2) + 'x';
     });
-
     $('directionToggle').addEventListener('change', e => {
         Config.set('rotationDirection', e.target.checked ? 1 : -1);
         $('dirLabel').textContent = e.target.checked ? 'Prawo' : 'Lewo';
     });
-
     $('speedRange').addEventListener('input', e => {
         const val = parseInt(e.target.value) / 100;
         Config.set('rotationSpeed', val);
         $('speedVal').textContent = val.toFixed(2);
     });
-
-    $('gridEnabledToggle').addEventListener('change', e => {
-        Config.set('gridEnabled', e.target.checked);
-    });
-
+    $('gridEnabledToggle').addEventListener('change', e => Config.set('gridEnabled', e.target.checked));
     $('gridColor').addEventListener('input', e => {
         Config.set('gridColor', e.target.value);
         $('gridColorVal').textContent = e.target.value;
     });
-
     $('gridDensity').addEventListener('input', e => {
         Config.set('gridDensity', parseInt(e.target.value));
         $('gridDensityVal').textContent = e.target.value;
     });
-
     $('gridThickness').addEventListener('input', e => {
         const val = parseInt(e.target.value) / 100;
         Config.set('gridThickness', val);
         $('gridThicknessVal').textContent = val.toFixed(2);
     });
-
     $('gridSpeedX').addEventListener('input', e => {
         Config.set('gridSpeedX', parseInt(e.target.value));
         $('gridSpeedXVal').textContent = (parseInt(e.target.value) / 100).toFixed(2);
     });
-
     $('gridSpeedY').addEventListener('input', e => {
         Config.set('gridSpeedY', parseInt(e.target.value));
         $('gridSpeedYVal').textContent = (parseInt(e.target.value) / 100).toFixed(2);
+    });
+
+    // Tapeta
+    $('wallpaperEnabledToggle').addEventListener('change', e => {
+        Config.set('wallpaperEnabled', e.target.checked);
+        toggleWallpaperOptions(e.target.checked);
+    });
+    $('wallpaperSelect').addEventListener('change', e => {
+        Config.set('wallpaperIndex', parseInt(e.target.value));
+    });
+    $('wallpaperBrightnessRange').addEventListener('input', e => {
+        const val = parseFloat(e.target.value);
+        $('wallpaperBrightnessVal').textContent = val.toFixed(2);
+        Config.set('wallpaperBrightness', val);
+    });
+    $('wallpaperBlurRange').addEventListener('input', e => {
+        const val = parseInt(e.target.value);
+        $('wallpaperBlurVal').textContent = val;
+        Config.set('wallpaperBlur', val);
     });
 
     $('exportBtn').addEventListener('click', () => {
         const blob = new Blob([Config.exportJSON()], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'particle-config.json';
+        a.download = 'metaverse-config.json';
         a.click();
     });
 
