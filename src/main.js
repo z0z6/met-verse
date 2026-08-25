@@ -5,7 +5,7 @@ import {
   buildLoungeSet, buildCornerSofa, buildCoffeeTable,
   buildPottedPlant, buildBushyPlant, buildBench, buildBonsai, buildLamellaJamb, buildLamellaReveal,
 } from './furniture.js';
-import { ROOMS, OBSTACLES, resolveCollision, crossesSolidWall, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS } from './collision.js';
+import { ROOMS, OBSTACLES, resolveCollision, crossesSolidWall, DEPTH, PARTITIONS, DOOR_HALF_WIDTH, WALL_THICKNESS, BOUNDS } from './collision.js';
 import { GalleryControls } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
@@ -23,6 +23,18 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
+
+// Zabezpieczenie "twarde": niezależnie od tego, co zrobi kamera (orbit w TPP,
+// obrót urządzenia w VR, jakikolwiek błąd proporcji stereo), NIC poza bryłą
+// budynku nigdy się nie wyrenderuje — płaszczyzny przycinania na zewnętrznych
+// granicach sal, tuż za ścianami (żeby nie przecinały samych murów).
+const CLIP_MARGIN = 0.03;
+renderer.clippingPlanes = [
+  new THREE.Plane(new THREE.Vector3(0, 0, 1), DEPTH / 2 + CLIP_MARGIN),        // płn.
+  new THREE.Plane(new THREE.Vector3(0, 0, -1), DEPTH / 2 + CLIP_MARGIN),       // płd.
+  new THREE.Plane(new THREE.Vector3(1, 0, 0), -BOUNDS.minX + CLIP_MARGIN),     // zach.
+  new THREE.Plane(new THREE.Vector3(-1, 0, 0), BOUNDS.maxX + CLIP_MARGIN),     // wsch.
+];
 
 // Ukryj canvas metaversum na starcie, aby nie prześwitywał przez intro
 renderer.domElement.style.display = 'none';
@@ -249,6 +261,12 @@ function startExperience(mode) {
   controls.setMode(mode);
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+
+  // Przycisk wyjścia widoczny we WSZYSTKICH trybach — na Androidzie nie ma
+  // klawisza Esc, więc to jedyny sposób na powrót do ekranu startowego.
+  const exitBtn = document.getElementById('exit-btn');
+  exitBtn.textContent = '✕ Wyjdź';
+  exitBtn.classList.remove('hidden');
   
   if (isMobileDevice) {
     document.getElementById('joystick-base').classList.remove('hidden');
@@ -283,10 +301,12 @@ vrBtn.addEventListener('click', async () => {
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   document.getElementById('reticle-ring').style.display = 'block';
-  document.getElementById('exit-vr').classList.remove('hidden');
+  const exitBtn = document.getElementById('exit-btn');
+  exitBtn.textContent = '✕ Wyjdź z VR';
+  exitBtn.classList.remove('hidden');
 });
 
-document.getElementById('exit-vr').addEventListener('click', () => exitToIntro());
+document.getElementById('exit-btn').addEventListener('click', () => exitToIntro());
 
 // Wyjście z metaversu do ekranu startowego pod klawiszem Esc — działa
 // zarówno w trybie FPP/TPP (odblokowuje kursor, chowa HUD), jak i w VR
@@ -304,8 +324,8 @@ function exitToIntro() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     document.getElementById('reticle-ring').style.display = 'none';
-    document.getElementById('exit-vr').classList.add('hidden');
   }
+  document.getElementById('exit-btn').classList.add('hidden');
 
   if (document.pointerLockElement === renderer.domElement) {
     document.exitPointerLock();
