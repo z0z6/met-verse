@@ -1,9 +1,7 @@
-// Jedyny dostępny model to gogle VR zbudowane z linii — nie ma już
-// wyboru kształtu (sfery/torus/fale), więc nie trzymamy tego w konfiguracji.
 const DEFAULTS = {
     bgColor: '#050510',
-    particleColor: '#ffffff', // kolor linii gogli VR (na stałe, brak kontrolki w UI)
-    multiColor: false,        // wielokolorowe linie gogli (na stałe wyłączone)
+    particleColor: '#ffffff',
+    multiColor: false,
     rotationDirection: 1,
     rotationSpeed: 0.3,
     gridEnabled: true,
@@ -14,7 +12,12 @@ const DEFAULTS = {
     gridSpeedY: 0,
     tiltDirection: 'front-right',
     tiltAngle: 15,
-    scale: 1.5
+    scale: 1.5,
+    // Nowe pola dla tapet
+    wallpaperEnabled: false,
+    wallpaperIndex: 0,
+    wallpaperBrightness: 1.0,
+    wallpaperBlur: 0
 };
 
 export const Config = {
