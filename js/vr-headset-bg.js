@@ -25,18 +25,23 @@ const MAX_PIXEL_RATIO = IS_MOBILE ? 1 : 2;
 const TARGET_FPS = IS_MOBILE ? 30 : 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 const RENDER_SCALE = IS_MOBILE ? 0.5 : 1;
-const EDGE_ANGLE_THRESHOLD = IS_MOBILE ? 28 : 15;
+// Próg kąta wykrywania krawędzi (im niższy, tym więcej linii = więcej
+// szczegółów). To liczone TYLKO RAZ, przy wczytaniu modelu (budowa
+// geometrii), a nie w każdej klatce animacji — nie ma więc żadnego
+// wpływu na płynność obracania się gogli. Dlatego można bezpiecznie
+// dać tyle samo detalu co na desktopie, mimo ogólnie oszczędniejszych
+// ustawień renderowania na mobile.
+const EDGE_ANGLE_THRESHOLD = 15;
 const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 
 // Na telefonie panel wyboru trybu jest dosunięty do dołu ekranu (patrz
 // style.css, @media max-width:640px), więc gogle przesuwamy w górę sceny,
 // żeby zostały w górnej części ekranu i nie zachodziły na panel. Wartość
 // w jednostkach świata Three.js — dobrana pod kamerę (0,0,4.2) / FOV 35
-// z init(), razem z MOBILE_MODEL_TARGET_SIZE powyżej (mniejszy model =
-// większy bezpieczny zapas na przesunięcie bez przycinania góry przez
-// kadr kamery). Przy target=1.3 bezpieczny limit to ok. 0.94 — 0.75
-// zostawia zapas i daje środek modelu na ok. 22% wysokości ekranu.
-const MOBILE_MODEL_Y_OFFSET = 0.75;
+// z init(), razem z MOBILE_MODEL_TARGET_SIZE powyżej. Przy target=1.3
+// bezpieczny limit (bez przycinania góry) to ok. 0.94 — 0.85 zostawia
+// mały zapas i daje środek modelu na ok. 18% wysokości ekranu.
+const MOBILE_MODEL_Y_OFFSET = 0.85;
 
 const GRID_VERTEX = `
     varying vec2 vUv;
@@ -175,16 +180,29 @@ export function init(containerId = "canvas-container", options = {}) {
         new THREE.Float32BufferAttribute(mergedPositions, 3)
       );
       const lineSegments = new THREE.LineSegments(mergedGeometry, lineMaterial);
-      modelGroup.add(lineSegments);
 
-      const box = new THREE.Box3().setFromObject(modelGroup);
+      // Środek geometryczny liczymy TU — na samym lineSegments, zanim
+      // trafi do modelGroup/rig. To ważne: rig ma już zastosowane
+      // przechylenie (applyTilt) i ewentualny offset w górę na mobile.
+      // Wcześniej środek liczono już PO dodaniu do rig (Box3.setFromObject
+      // uwzględnia transformacje przodków), co przy pochylonym modelu
+      // mieszało układ świata z lokalnym przesunięciem modelGroup —
+      // dawało to lekko skrzywiony, niewyśrodkowany wynik. Licząc środek
+      // na samym, jeszcze nieprzyczepionym lineSegments (tożsamościowa
+      // transformacja), dostajemy czysty, poprawny środek geometryczny
+      // niezależnie od przechylenia i przesunięcia rodzica.
+      const box = new THREE.Box3().setFromObject(lineSegments);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
       const targetSize = (IS_MOBILE && raiseOnMobile) ? MOBILE_MODEL_TARGET_SIZE : MODEL_TARGET_SIZE;
       baseScaleFactor = targetSize / maxDim;
 
-      modelGroup.position.sub(center.multiplyScalar(baseScaleFactor));
+      // Centrujemy w surowych (nieprzeskalowanych) jednostkach modelu —
+      // to przesunięcie dziedziczy potem skalę rodzica (modelGroup) przez
+      // applyScale(), więc nie trzeba już mnożyć przez baseScaleFactor.
+      lineSegments.position.sub(center);
+      modelGroup.add(lineSegments);
       applyScale();
     },
     undefined,
