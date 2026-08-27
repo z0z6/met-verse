@@ -136,6 +136,20 @@ export function init(containerId = "canvas-container", options = {}) {
   // kontenera.
   if (IS_MOBILE && raiseOnMobile) rig.position.y = MOBILE_MODEL_Y_OFFSET;
 
+  // --- DIAGNOSTYKA TYMCZASOWA (do usunięcia po znalezieniu przyczyny) ---
+  // Otwórz na telefonie: podłącz kablem USB do komputera, w komputerowym
+  // Chrome wejdź na chrome://inspect, znajdź kartę ze stroną, kliknij
+  // "inspect" -> zakładka Console. Powinieneś zobaczyć jedną linijkę
+  // zaczynającą się od "[VR-BG diag]" — prześlij mi dokładnie jej treść.
+  console.log('[VR-BG diag]', {
+    IS_MOBILE, raiseOnMobile,
+    'rig.position.y (po ustawieniu)': rig.position.y,
+    userAgent: navigator.userAgent,
+    innerWidth: window.innerWidth,
+    maxTouchPoints: navigator.maxTouchPoints,
+    'mountEl.clientWidth/Height': [mountEl.clientWidth, mountEl.clientHeight],
+  });
+
   modelGroup = new THREE.Group();
   rig.add(modelGroup);
 
