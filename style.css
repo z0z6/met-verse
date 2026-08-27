@@ -52,12 +52,13 @@ body > canvas {
 
 .hint { font-size:.78rem; color:rgba(255,255,255,.55); margin-top:12px; }
 
-/* ---- Telefony / wąskie ekrany: mniejszy panel, przesunięty w dół,
-   żeby nie zasłaniał obracających się gogli na środku ekranu ---- */
+/* ---- Telefony / wąskie ekrany: mniejszy panel, jeszcze niżej przy dole
+   ekranu, żeby zostawić więcej miejsca u góry na obracające się gogle
+   (patrz js/vr-headset-bg.js -> MOBILE_MODEL_Y_OFFSET) ---- */
 @media (max-width: 640px) {
   #intro {
     align-items: flex-end;
-    padding-bottom: max(5vh, env(safe-area-inset-bottom));
+    padding-bottom: max(2.5vh, env(safe-area-inset-bottom));
   }
   .intro-panel {
     max-width: 92vw;
