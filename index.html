@@ -78,7 +78,13 @@
 <!-- Inicjalizacja tła: gogle VR (zawsze) + opcjonalna tapeta pod spodem -->
 <script type="module">
 import { Config } from './js/config.js';
-import { init as initVRHeadsetBg } from './js/vr-headset-bg.js';
+// UWAGA: "?v=2" na końcu ścieżki to celowy cache-bust — GitHub Pages
+// (CDN Fastly) cache'uje pliki JS niezależnie od cache przeglądarki,
+// więc samo wyczyszczenie cache/incognito na telefonie NIE gwarantuje
+// świeżej wersji. Przy każdej kolejnej zmianie w js/vr-headset-bg.js
+// podbij ten numer (v=3, v=4...), żeby wymusić natychmiastowe pobranie
+// nowej wersji zamiast czekać, aż CDN sam wygasi stary cache.
+import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=2';
 
 async function loadConfigAndInit() {
   try {
