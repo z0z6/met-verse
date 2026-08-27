@@ -8,7 +8,7 @@ const MODEL_TARGET_SIZE = 2.4;
 // pomniejszony (niezależnie od MOBILE_MODEL_Y_OFFSET poniżej) — inaczej
 // nawet przesunięty w górę i tak jest na tyle duży, że sięga do panelu.
 // 1.3 zamiast 2.4 mieści model w górnej ~1/3 ekranu.
-const MOBILE_MODEL_TARGET_SIZE = 1.3;
+const MOBILE_MODEL_TARGET_SIZE = 1.15;
 const MODEL_URL = "./models/vr-headset.glb";
 
 const WALLPAPERS = [
@@ -50,10 +50,10 @@ const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 // style.css, @media max-width:640px), więc gogle przesuwamy w górę sceny,
 // żeby zostały w górnej części ekranu i nie zachodziły na panel. Wartość
 // w jednostkach świata Three.js — dobrana pod kamerę (0,0,4.2) / FOV 35
-// z init(), razem z MOBILE_MODEL_TARGET_SIZE powyżej. Przy target=1.3
-// bezpieczny limit (bez przycinania góry) to ok. 0.94 — 0.85 zostawia
-// mały zapas i daje środek modelu na ok. 18% wysokości ekranu.
-const MOBILE_MODEL_Y_OFFSET = 0.85;
+// z init(), razem z MOBILE_MODEL_TARGET_SIZE powyżej. Przy target=1.15
+// bezpieczny limit (bez przycinania góry) to ok. 0.98 — 0.78 zostawia
+// zapas i daje środek modelu na ok. 20,5% wysokości ekranu.
+const MOBILE_MODEL_Y_OFFSET = 0.78;
 
 const GRID_VERTEX = `
     varying vec2 vUv;
