@@ -4,6 +4,11 @@ import { Config } from "./config.js";
 
 const LINE_COLOR = 0x000000;
 const MODEL_TARGET_SIZE = 2.4;
+// Na telefonie, na pełnoekranowym ekranie startowym, model jest dodatkowo
+// pomniejszony (niezależnie od MOBILE_MODEL_Y_OFFSET poniżej) — inaczej
+// nawet przesunięty w górę i tak jest na tyle duży, że sięga do panelu.
+// 1.3 zamiast 2.4 mieści model w górnej ~1/3 ekranu.
+const MOBILE_MODEL_TARGET_SIZE = 1.3;
 const MODEL_URL = "./models/vr-headset.glb";
 
 const WALLPAPERS = [
@@ -27,11 +32,11 @@ const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 // style.css, @media max-width:640px), więc gogle przesuwamy w górę sceny,
 // żeby zostały w górnej części ekranu i nie zachodziły na panel. Wartość
 // w jednostkach świata Three.js — dobrana pod kamerę (0,0,4.2) / FOV 35
-// z init(). Policzona z realnej geometrii modelu (bounding box po
-// przeskalowaniu do MODEL_TARGET_SIZE): bezpieczny margines to ok. 0.61
-// (powyżej tego górna krawędź modelu wychodzi poza kadr kamery i się
-// przycina) — 0.55 zostawia mały zapas. Tylko mobile — desktop bez zmian.
-const MOBILE_MODEL_Y_OFFSET = 0.55;
+// z init(), razem z MOBILE_MODEL_TARGET_SIZE powyżej (mniejszy model =
+// większy bezpieczny zapas na przesunięcie bez przycinania góry przez
+// kadr kamery). Przy target=1.3 bezpieczny limit to ok. 0.94 — 0.75
+// zostawia zapas i daje środek modelu na ok. 22% wysokości ekranu.
+const MOBILE_MODEL_Y_OFFSET = 0.75;
 
 const GRID_VERTEX = `
     varying vec2 vUv;
@@ -136,20 +141,6 @@ export function init(containerId = "canvas-container", options = {}) {
   // kontenera.
   if (IS_MOBILE && raiseOnMobile) rig.position.y = MOBILE_MODEL_Y_OFFSET;
 
-  // --- DIAGNOSTYKA TYMCZASOWA (do usunięcia po znalezieniu przyczyny) ---
-  // Otwórz na telefonie: podłącz kablem USB do komputera, w komputerowym
-  // Chrome wejdź na chrome://inspect, znajdź kartę ze stroną, kliknij
-  // "inspect" -> zakładka Console. Powinieneś zobaczyć jedną linijkę
-  // zaczynającą się od "[VR-BG diag]" — prześlij mi dokładnie jej treść.
-  console.log('[VR-BG diag]', {
-    IS_MOBILE, raiseOnMobile,
-    'rig.position.y (po ustawieniu)': rig.position.y,
-    userAgent: navigator.userAgent,
-    innerWidth: window.innerWidth,
-    maxTouchPoints: navigator.maxTouchPoints,
-    'mountEl.clientWidth/Height': [mountEl.clientWidth, mountEl.clientHeight],
-  });
-
   modelGroup = new THREE.Group();
   rig.add(modelGroup);
 
@@ -190,7 +181,8 @@ export function init(containerId = "canvas-container", options = {}) {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      baseScaleFactor = MODEL_TARGET_SIZE / maxDim;
+      const targetSize = (IS_MOBILE && raiseOnMobile) ? MOBILE_MODEL_TARGET_SIZE : MODEL_TARGET_SIZE;
+      baseScaleFactor = targetSize / maxDim;
 
       modelGroup.position.sub(center.multiplyScalar(baseScaleFactor));
       applyScale();
