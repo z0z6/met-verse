@@ -21,10 +21,22 @@ const WALLPAPERS = [
 
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
   || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
-const MAX_PIXEL_RATIO = IS_MOBILE ? 1 : 2;
+// Jw. — ta scena jest na tyle tania, że wyższy pixelRatio (ostrzejszy
+// obraz na ekranach o wysokiej gęstości pikseli) nie kosztuje praktycznie
+// nic w porównaniu do ciężkiej sceny głównej galerii, gdzie ten limit
+// ma realne znaczenie.
+const MAX_PIXEL_RATIO = 2;
 const TARGET_FPS = IS_MOBILE ? 30 : 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
-const RENDER_SCALE = IS_MOBILE ? 0.5 : 1;
+// Ta scena to WYŁĄCZNIE cienkie linie na przezroczystym tle — brak
+// cieniowania, brak tekstur, garstka wierzchołków. To zupełnie inny
+// przypadek niż ciężka scena głównej galerii (PBR, wiele świateł),
+// gdzie ograniczenia na mobile są konieczne. Tutaj koszt renderowania
+// w pełnej rozdzielczości jest znikomy, a wcześniejsze RENDER_SCALE=0.5
+// (render w połowie rozdzielczości, potem rozciągany CSS-em do pełnego
+// rozmiaru) było główną przyczyną rozmycia linii — bez realnego zysku
+// na płynności, bo scena i tak jest tania.
+const RENDER_SCALE = 1;
 // Próg kąta wykrywania krawędzi (im niższy, tym więcej linii = więcej
 // szczegółów). To liczone TYLKO RAZ, przy wczytaniu modelu (budowa
 // geometrii), a nie w każdej klatce animacji — nie ma więc żadnego
@@ -120,7 +132,10 @@ export function init(containerId = "canvas-container", options = {}) {
   camera.position.set(0, 0, 4.2);
 
   renderer = new THREE.WebGLRenderer({
-    antialias: !IS_MOBILE,
+    // Antyaliasing tutaj jest praktycznie darmowy — scena to tylko cienkie
+    // linie (brak cieniowania/tekstur), więc koszt wygładzania krawędzi
+    // jest znikomy nawet na słabszym GPU telefonu.
+    antialias: true,
     alpha: true,
     powerPreference: "high-performance",
   });
