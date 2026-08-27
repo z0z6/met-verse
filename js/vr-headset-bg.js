@@ -23,6 +23,13 @@ const RENDER_SCALE = IS_MOBILE ? 0.5 : 1;
 const EDGE_ANGLE_THRESHOLD = IS_MOBILE ? 28 : 15;
 const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 
+// Na telefonie panel wyboru trybu jest dosunięty do dołu ekranu (patrz
+// style.css, @media max-width:640px), więc gogle przesuwamy w górę sceny,
+// żeby zostały w górnej części ekranu i nie zachodziły na panel. Wartość
+// w jednostkach świata Three.js — dobrana pod kamerę (0,0,4.2) / FOV 35
+// z init(). Tylko mobile — desktop bez zmian (gogle zostają wyśrodkowane).
+const MOBILE_MODEL_Y_OFFSET = 0.85;
+
 const GRID_VERTEX = `
     varying vec2 vUv;
     void main() {
@@ -62,7 +69,8 @@ let cachedRotationSpeed = 0;
 let cachedRotationDirection = 1;
 let cachedGridEnabled = true;
 
-export function init(containerId = "canvas-container") {
+export function init(containerId = "canvas-container", options = {}) {
+  const { raiseOnMobile = false } = options;
   mountEl = document.getElementById(containerId);
   if (!mountEl) {
     console.error(`vr-headset-bg: nie znaleziono #${containerId}`);
@@ -119,6 +127,11 @@ export function init(containerId = "canvas-container") {
   rig = new THREE.Group();
   scene.add(rig);
   applyTilt();
+  // Tylko na pełnoekranowym ekranie startowym (index.html) — nie w małym
+  // podglądzie Panelu Admina, gdzie te same jednostki świata dałyby
+  // przycięty/przesunięty w złym stopniu efekt przy innych proporcjach
+  // kontenera.
+  if (IS_MOBILE && raiseOnMobile) rig.position.y = MOBILE_MODEL_Y_OFFSET;
 
   modelGroup = new THREE.Group();
   rig.add(modelGroup);
