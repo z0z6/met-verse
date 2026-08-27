@@ -95,7 +95,7 @@ async function loadConfigAndInit() {
     console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
   }
   document.body.style.background = Config.get('bgColor');
-  initVRHeadsetBg('canvas-container');
+  initVRHeadsetBg('canvas-container', { raiseOnMobile: true });
 }
 
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
