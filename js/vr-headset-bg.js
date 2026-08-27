@@ -27,8 +27,11 @@ const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 // style.css, @media max-width:640px), więc gogle przesuwamy w górę sceny,
 // żeby zostały w górnej części ekranu i nie zachodziły na panel. Wartość
 // w jednostkach świata Three.js — dobrana pod kamerę (0,0,4.2) / FOV 35
-// z init(). Tylko mobile — desktop bez zmian (gogle zostają wyśrodkowane).
-const MOBILE_MODEL_Y_OFFSET = 0.85;
+// z init(). Policzona z realnej geometrii modelu (bounding box po
+// przeskalowaniu do MODEL_TARGET_SIZE): bezpieczny margines to ok. 0.61
+// (powyżej tego górna krawędź modelu wychodzi poza kadr kamery i się
+// przycina) — 0.55 zostawia mały zapas. Tylko mobile — desktop bez zmian.
+const MOBILE_MODEL_Y_OFFSET = 0.55;
 
 const GRID_VERTEX = `
     varying vec2 vUv;
