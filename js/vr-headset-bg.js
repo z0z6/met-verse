@@ -9,6 +9,10 @@ const MODEL_TARGET_SIZE = 2.4;
 // nawet przesunięty w górę i tak jest na tyle duży, że sięga do panelu.
 // 1.3 zamiast 2.4 mieści model w górnej ~1/3 ekranu.
 const MOBILE_MODEL_TARGET_SIZE = 1.15;
+// Jak wyżej, ale tylko dla Androida (patrz IS_ANDROID niżej) — trochę
+// mniejszy model niż na pozostałych telefonach (iOS itd.), zgodnie z
+// prośbą o pomniejszenie widoku wyłącznie w wersji na Androida.
+const ANDROID_MODEL_TARGET_SIZE = 0.95;
 const MODEL_URL = "./models/vr-headset.glb";
 
 const WALLPAPERS = [
@@ -21,6 +25,10 @@ const WALLPAPERS = [
 
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
   || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+// Osobna flaga tylko dla Androida — używana tam, gdzie zachowanie ma się
+// różnić WYŁĄCZNIE na Androidzie, a nie na całym mobile (np. iOS ma zostać
+// bez zmian).
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
 // Jw. — ta scena jest na tyle tania, że wyższy pixelRatio (ostrzejszy
 // obraz na ekranach o wysokiej gęstości pikseli) nie kosztuje praktycznie
 // nic w porównaniu do ciężkiej sceny głównej galerii, gdzie ten limit
@@ -54,6 +62,13 @@ const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
 // bezpieczny limit (bez przycinania góry) to ok. 0.98 — 0.78 zostawia
 // zapas i daje środek modelu na ok. 20,5% wysokości ekranu.
 const MOBILE_MODEL_Y_OFFSET = 0.78;
+// Jak wyżej, ale tylko dla Androida — niższa wartość = model niżej na
+// ekranie (mniej podniesiony w górę). Działa razem z ANDROID_MODEL_TARGET_SIZE
+// powyżej: mniejszy model ma większy margines bezpieczeństwa, więc można
+// pozwolić mu "zejść" niżej bez ryzyka nachodzenia na panel wyboru trybu.
+// Sprawdź na realnym telefonie z Androidem, czy nie zachodzi na panel przy
+// niskich, "wąskich" ekranach — w razie czego podnieś tę wartość.
+const ANDROID_MODEL_Y_OFFSET = 0.5;
 
 const GRID_VERTEX = `
     varying vec2 vUv;
@@ -159,7 +174,9 @@ export function init(containerId = "canvas-container", options = {}) {
   // podglądzie Panelu Admina, gdzie te same jednostki świata dałyby
   // przycięty/przesunięty w złym stopniu efekt przy innych proporcjach
   // kontenera.
-  if (IS_MOBILE && raiseOnMobile) rig.position.y = MOBILE_MODEL_Y_OFFSET;
+  if (IS_MOBILE && raiseOnMobile) {
+    rig.position.y = IS_ANDROID ? ANDROID_MODEL_Y_OFFSET : MOBILE_MODEL_Y_OFFSET;
+  }
 
   modelGroup = new THREE.Group();
   rig.add(modelGroup);
@@ -210,7 +227,9 @@ export function init(containerId = "canvas-container", options = {}) {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      const targetSize = (IS_MOBILE && raiseOnMobile) ? MOBILE_MODEL_TARGET_SIZE : MODEL_TARGET_SIZE;
+      const targetSize = (IS_MOBILE && raiseOnMobile)
+        ? (IS_ANDROID ? ANDROID_MODEL_TARGET_SIZE : MOBILE_MODEL_TARGET_SIZE)
+        : MODEL_TARGET_SIZE;
       baseScaleFactor = targetSize / maxDim;
 
       // Centrujemy w surowych (nieprzeskalowanych) jednostkach modelu —
