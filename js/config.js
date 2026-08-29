@@ -8,6 +8,9 @@ const DEFAULTS = {
     gridThickness: 0.5,
     gridSpeedX: -88,
     gridSpeedY: -91,
+    tiltDirection: 'front-right',
+    tiltAngle: 15,
+    scale: 1.1,
     
     // --- KOMPUTER ---
     desktop_vr_x: 50,
@@ -24,13 +27,15 @@ const DEFAULTS = {
     desktop_wallpaper_blur: 0,
     desktop_rotation_direction: 1,
     desktop_rotation_speed: 0.1,
+    desktop_tilt_direction: 'front-right',
+    desktop_tilt_angle: 15,
     desktop_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych',
 
     // --- ANDROID ---
     android_vr_x: 50,
-    android_vr_y: 20, // Wyżej na ekranie telefonu
+    android_vr_y: 20,
     android_panel_x: 50,
-    android_panel_y: 90, // Niżej na ekranie telefonu
+    android_panel_y: 90,
     android_panel_size: 0.9,
     android_panel_opacity: 0.9,
     android_panel_title: 'IMAGINARIUM',
@@ -41,10 +46,12 @@ const DEFAULTS = {
     android_wallpaper_blur: 0,
     android_rotation_direction: 1,
     android_rotation_speed: 0.1,
+    android_tilt_direction: 'front-right',
+    android_tilt_angle: 15,
     android_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych'
 };
 
-const CONFIG_VERSION = '4'; // Podbicie wersji, aby wyczyścić stare ustawienia dropdownów
+const CONFIG_VERSION = '5';
 const VERSION_KEY = 'metaverse_configVersion';
 
 function migrateIfNeeded() {
