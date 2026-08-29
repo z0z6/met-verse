@@ -15,6 +15,7 @@ const DEFAULTS = {
     // --- KOMPUTER ---
     desktop_vr_x: 50,
     desktop_vr_y: 50,
+    desktop_vr_size: 1.0,
     desktop_panel_x: 50,
     desktop_panel_y: 50,
     desktop_panel_size: 1.0,
@@ -34,6 +35,7 @@ const DEFAULTS = {
     // --- ANDROID ---
     android_vr_x: 50,
     android_vr_y: 20,
+    android_vr_size: 0.9,
     android_panel_x: 50,
     android_panel_y: 90,
     android_panel_size: 0.9,
@@ -51,7 +53,7 @@ const DEFAULTS = {
     android_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych'
 };
 
-const CONFIG_VERSION = '5';
+const CONFIG_VERSION = '6';
 const VERSION_KEY = 'metaverse_configVersion';
 
 function migrateIfNeeded() {
