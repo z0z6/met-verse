@@ -113,8 +113,8 @@
             z-index: 10;
             pointer-events: none;
         }
-        
-        /* Android-specific styles */
+
+        /* Style mobilne — spójne z mockiem Android w adminie */
         @media (max-width: 768px) and (pointer: coarse) {
             .intro-panel {
                 max-width: 95vw;
@@ -189,8 +189,13 @@ import { Config } from './js/config.js';
 import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=13';
 import { applyPanelToElement } from './js/panelConfig.js';
 
+function isMobilePlatform() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+}
+
 function positionIntroPanel() {
-    const platform = /Android/i.test(navigator.userAgent) ? 'android' : 'desktop';
+    const platform = isMobilePlatform() ? 'android' : 'desktop';
     const panel = document.querySelector('.intro-panel');
     if (panel) {
         applyPanelToElement(panel, platform + '_', null);
@@ -209,17 +214,14 @@ async function loadConfigAndInit() {
     } catch (e) {
         console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
     }
-    
+
     document.body.style.background = Config.get('bgColor');
-    
-    // Inicjalizacja tła z goglami i tapetą
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    initVRHeadsetBg('canvas-container', { 
+
+    initVRHeadsetBg('canvas-container', {
         raiseOnMobile: true,
-        forcePlatform: isAndroid ? 'android' : 'desktop'
+        forcePlatform: isMobilePlatform() ? 'android' : 'desktop'
     });
-    
-    // Czekaj aż DOM i model 3D będą gotowe
+
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             positionIntroPanel();
@@ -241,7 +243,6 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
-<!-- ZMIANA: natychmiastowe ładowanie zamiast opóźnionego requestIdleCallback -->
 <script type="module" src="./src/main.js"></script>
 
 </body>
