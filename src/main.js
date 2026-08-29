@@ -185,6 +185,19 @@ function setReticleFillHeight(pct) {
   reticleFills.forEach(f => { f.style.height = pct; });
 }
 
+/** Spójna synchronizacja celowników: kropka tylko w FPP, pierścienie tylko w VR */
+function updateCrosshairUI() {
+  const crosshair = document.getElementById('crosshair');
+  if (!crosshair) return;
+  if (inVR) {
+    crosshair.classList.add('hidden');
+    setReticleDisplay('block');
+  } else {
+    setReticleDisplay('none');
+    crosshair.classList.toggle('hidden', controls.mode !== 'fpp');
+  }
+}
+
 const isMobileDevice = IS_MOBILE;
 const vrBtn = document.getElementById('start-vr');
 
@@ -364,9 +377,7 @@ function startExperience(mode) {
   document.getElementById('hud').classList.remove('hidden');
 
   // Celownik: kropka tylko w FPP, reticle VR ukryte
-  const crosshair = document.getElementById('crosshair');
-  crosshair.classList.toggle('hidden', mode !== 'fpp');
-  setReticleDisplay('none');
+  updateCrosshairUI();
 
   // Przycisk wyjścia widoczny we WSZYSTKICH trybach — na Androidzie nie ma
   // klawisza Esc, więc to jedyny sposób na powrót do ekranu startowego.
@@ -385,6 +396,12 @@ document.getElementById('start-fpp').addEventListener('click', () => startExperi
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
 
 if (isMobileDevice) initMobileControls(controls);
+
+document.getElementById('toggle-mode').addEventListener('click', () => {
+  if (inVR) return;
+  controls.toggleMode();
+  updateCrosshairUI();
+});
 
 // Włącza tryb VR (cardboard). `startPos` to opcjonalny THREE.Vector3 —
 // gdy podany, gracz startuje w VR z tej pozycji (np. środek sali, przy
@@ -412,10 +429,7 @@ async function enterVR(startPos) {
   inVR = true;
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  setReticleDisplay('block');
-  
-  // Kropka FPP chowana w VR (rolę przejmują reticle-ring-left/-right)
-  document.getElementById('crosshair').classList.add('hidden');
+  updateCrosshairUI();
   
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź z VR';
@@ -433,6 +447,5 @@ function exitVR() {
   camera.rotation.set(0, 0, 0);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  setReticleDisplay('none');
-  
-  // Przywróć kropkę jeśli wracamy do FPP,
+  updateCrosshairUI();
+}
