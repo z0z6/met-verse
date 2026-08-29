@@ -84,11 +84,9 @@ export function init(containerId = "canvas-container", options = {}) {
     rig = new THREE.Group();
     scene.add(rig);
     
-    // Model group - dodawany od razu
     modelGroup = new THREE.Group();
     rig.add(modelGroup);
 
-    // Ładowanie modelu
     new GLTFLoader().load(MODEL_URL, (gltf) => {
         const lineMaterial = new THREE.LineBasicMaterial({ color: LINE_COLOR, transparent: LINE_OPACITY < 1, opacity: LINE_OPACITY });
         const mergedPositions = [];
@@ -123,7 +121,6 @@ export function init(containerId = "canvas-container", options = {}) {
         modelGroup.add(lineSegments);
         applyScale();
         
-        // PO załadowaniu modelu ustawiamy pozycję i tilt
         applyTilt();
         updateGogglePosition();
     }, undefined, (err) => console.error("vr-headset-bg: błąd wczytywania modelu:", err));
@@ -176,7 +173,9 @@ function applyTilt() {
 
 function applyScale() {
     if (!modelGroup) return;
-    modelGroup.scale.setScalar(baseScaleFactor * Config.get('scale'));
+    // Użyj rozmiaru gogli dla aktualnej platformy
+    const vrSize = Config.get(currentPlatform + '_vr_size') || 1.0;
+    modelGroup.scale.setScalar(baseScaleFactor * vrSize);
 }
 
 function applyWallpaper() {
@@ -205,6 +204,11 @@ function onConfigChange(e) {
     
     if (key === currentPlatform + '_vr_x' || key === currentPlatform + '_vr_y') {
         updateGogglePosition();
+    }
+    
+    // Aktualizacja rozmiaru gogli
+    if (key === currentPlatform + '_vr_size') {
+        applyScale();
     }
     
     if (key === currentPlatform + '_tilt_direction' || key === currentPlatform + '_tilt_angle') {
@@ -268,6 +272,7 @@ export function setPreviewPlatform(platform) {
     applyTilt();
     updateGogglePosition();
     applyWallpaper();
+    applyScale();
 }
 
 export function destroy() {
