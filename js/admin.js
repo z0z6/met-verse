@@ -18,6 +18,8 @@ const ADMIN_KEYS = [
     'wallpaperEnabled', 'bgColor'
 ];
 
+let currentPreviewPlatform = 'desktop';
+
 function updateUIFromConfig() {
     ADMIN_KEYS.forEach(key => {
         const el = $(key);
@@ -30,7 +32,7 @@ function updateUIFromConfig() {
         }
         updateBadge(key, val);
     });
-    updateMockPanel('desktop');
+    updateMockPanel(currentPreviewPlatform);
 }
 
 function updateBadge(key, val) {
@@ -47,8 +49,26 @@ function updateBadge(key, val) {
 }
 
 function updateMockPanel(platform) {
-    const prefix = platform + '_';
-    applyPanelToElement($('mock-panel'), prefix);
+    currentPreviewPlatform = platform;
+    
+    if (platform === 'desktop') {
+        $('desktop-preview').style.display = 'block';
+        $('android-preview').style.display = 'none';
+        $('btnPreviewDesktop').classList.add('active');
+        $('btnPreviewAndroid').classList.remove('active');
+        
+        // Dla desktop: panel pozycjonowany względem całego viewport podglądu
+        applyPanelToElement($('mock-panel-desktop'), 'desktop_', null);
+    } else {
+        $('desktop-preview').style.display = 'none';
+        $('android-preview').style.display = 'flex';
+        $('btnPreviewDesktop').classList.remove('active');
+        $('btnPreviewAndroid').classList.add('active');
+        
+        // Dla Android: panel pozycjonowany względem ramki telefonu
+        applyPanelToElement($('mock-panel-android'), 'android_', $('phone-frame'));
+    }
+    
     setPreviewPlatform(platform);
     updateGogglePosition();
 }
@@ -66,10 +86,15 @@ function bindEvents() {
             Config.set(key, val);
             updateBadge(key, val);
             
+            // Aktualizuj podgląd dla odpowiedniej platformy
             if (key.startsWith('desktop_')) {
-                updateMockPanel('desktop');
+                if (currentPreviewPlatform === 'desktop') {
+                    updateMockPanel('desktop');
+                }
             } else if (key.startsWith('android_')) {
-                updateMockPanel('android');
+                if (currentPreviewPlatform === 'android') {
+                    updateMockPanel('android');
+                }
             } else if (key === 'bgColor') {
                 document.body.style.background = val;
             }
@@ -78,6 +103,10 @@ function bindEvents() {
         el.addEventListener('input', handler);
         el.addEventListener('change', handler);
     });
+
+    // Przełączniki podglądu
+    $('btnPreviewDesktop').addEventListener('click', () => updateMockPanel('desktop'));
+    $('btnPreviewAndroid').addEventListener('click', () => updateMockPanel('android'));
 
     $('exportBtn').addEventListener('click', () => {
         const blob = new Blob([Config.exportJSON()], { type: 'application/json' });
