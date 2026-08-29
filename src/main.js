@@ -10,7 +10,6 @@ import { GalleryControls, keys } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
 import { initMobileControls } from './mobileControls.js';
-import { Config } from '../js/config.js';
 
 // Wykrywanie urządzenia mobilnego — ta sama logika (i ten sam wynik) co w
 // js/vr-headset-bg.js, żeby ekran startowy i właściwa galeria zawsze się
@@ -42,10 +41,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
-// ZMIANA: canvas gry musi być nad tłem (z-index:1) i prawidłowo pozycjonowany
-renderer.domElement.style.cssText =
-    'position:fixed;top:0;left:0;z-index:1;display:none;';
-
 // Zabezpieczenie "twarde": niezależnie od tego, co zrobi kamera (orbit w TPP,
 // obrót urządzenia w VR, jakikolwiek błąd proporcji stereo), NIC poza bryłą
 // budynku nigdy się nie wyrenderuje — płaszczyzny przycinania na zewnętrznych
@@ -58,8 +53,8 @@ renderer.clippingPlanes = [
   new THREE.Plane(new THREE.Vector3(-1, 0, 0), BOUNDS.maxX + CLIP_MARGIN),     // wsch.
 ];
 
-// Ukryj canvas metaversum na starcie, aby nie prześwitywał przez intro
-// (display:none jest już ustawione powyżej w cssText)
+// Canvas jest widoczny od razu, ponieważ usunięto ekran startowy
+renderer.domElement.style.display = 'block';
 
 // Rig gracza
 const rig = new THREE.Group();
@@ -190,12 +185,10 @@ function setReticleFillHeight(pct) {
 
 const isMobileDevice = IS_MOBILE;
 const vrBtn = document.getElementById('start-vr');
-
-// Na desktopie przycisk VR jest zablokowany z odpowiednim tekstem z configu
 if (!isMobileDevice) {
   vrBtn.disabled = true;
   vrBtn.classList.add('long-label');
-  vrBtn.querySelector('span').textContent = Config.get('desktop_vr_blocked_label') || 'VR dostępne tylko w urządzeniach mobilnych';
+  vrBtn.querySelector('span').textContent = 'VR dostępne tylko w urządzeniach mobilnych';
 }
 
 // Bezpieczny Promień Teleportacji VR (Zabezpieczenie przed przechodzeniem przez ściany)
@@ -248,11 +241,10 @@ const _captionDir = new THREE.Vector3();
 const _captionOrigin = new THREE.Vector3();
 function updateCaption() {
   const dir = _captionDir;
-  const origin = _captionOrigin;
   camera.getWorldDirection(dir);
-  const origin2 = _captionOrigin;
-  camera.getWorldPosition(origin2);
-  raycaster.set(origin2, dir);
+  const origin = _captionOrigin;
+  camera.getWorldPosition(origin);
+  raycaster.set(origin, dir);
   const targets = interactiveArtworks.flatMap(g => g.children);
   const hits = raycaster.intersectObjects(targets, false);
   const captionEl = document.getElementById('artwork-caption');
@@ -358,12 +350,10 @@ window.addEventListener('resize', () => {
   }
 });
 
-// UI: ekran startowy
+// UI: ekran startowy - uproszczona wersja bez #intro
 function startExperience(mode) {
   renderer.domElement.style.display = 'block';
-  
   controls.setMode(mode);
-  document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
 
   // Przycisk wyjścia widoczny we WSZYSTKICH trybach — na Androidzie nie ma
@@ -379,8 +369,8 @@ function startExperience(mode) {
   }
 }
 
-document.getElementById('start-fpp').addEventListener('click', () => startExperience('fpp'));
-document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
+// Automatyczne uruchomienie doświadczenia w trybie pierwszej osoby (FPP)
+startExperience('fpp');
 
 if (isMobileDevice) initMobileControls(controls);
 
@@ -468,9 +458,6 @@ document.getElementById('exit-btn').addEventListener('click', () => exitToIntro(
 // zarówno w trybie FPP/TPP (odblokowuje kursor, chowa HUD), jak i w VR
 // (dodatkowo wyłącza tryb cardboard, tak jak przycisk "Wyjdź z VR").
 function exitToIntro() {
-  const intro = document.getElementById('intro');
-  if (!intro.classList.contains('hidden')) return; // już jesteśmy na starcie
-
   if (inVR) exitVR();
   document.getElementById('exit-btn').classList.add('hidden');
 
@@ -480,7 +467,6 @@ function exitToIntro() {
 
   document.getElementById('joystick-base').classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
-  intro.classList.remove('hidden');
   renderer.domElement.style.display = 'none';
 }
 
