@@ -10,7 +10,7 @@ import { GalleryControls, keys } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
 import { initMobileControls } from './mobileControls.js';
-import { Config } from '../js/config.js'; // <-- DODANY IMPORT KONFIGURACJI
+import { Config } from '../js/config.js';
 
 // Wykrywanie urządzenia mobilnego — ta sama logika (i ten sam wynik) co w
 // js/vr-headset-bg.js, żeby ekran startowy i właściwa galeria zawsze się
@@ -187,7 +187,7 @@ function setReticleFillHeight(pct) {
 const isMobileDevice = IS_MOBILE;
 const vrBtn = document.getElementById('start-vr');
 
-// <-- ZMIANA: Użycie konfiguracji zamiast sztywnego tekstu -->
+// Na desktopie przycisk VR jest zablokowany z odpowiednim tekstem z configu
 if (!isMobileDevice) {
   vrBtn.disabled = true;
   vrBtn.classList.add('long-label');
