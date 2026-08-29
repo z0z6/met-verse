@@ -229,9 +229,9 @@ function updateGazeTeleport(dt) {
       setReticleFillHeight(Math.min(100, (dwell / TELEPORT_DWELL) * 100) + '%');
       if (dwell >= TELEPORT_DWELL) {
         const targetPoint = hits[0].point.clone();
-        
+
         // Promień kolizji gracza w VR (zwiększony margines 0.55m od ścian)
-        const PLAYER_VR_RADIUS = 0.55; 
+        const PLAYER_VR_RADIUS = 0.55;
 
         // 1. Ogranicz pozycję wewnątrz ścian/obszaru
         resolveCollision(targetPoint, PLAYER_VR_RADIUS, 1.0);
@@ -371,7 +371,7 @@ window.addEventListener('resize', () => {
 // UI: ekran startowy
 function startExperience(mode) {
   renderer.domElement.style.display = 'block';
-  
+
   controls.setMode(mode);
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
@@ -384,7 +384,7 @@ function startExperience(mode) {
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź';
   exitBtn.classList.remove('hidden');
-  
+
   if (isMobileDevice) {
     document.getElementById('joystick-base').classList.remove('hidden');
   } else {
@@ -397,16 +397,10 @@ document.getElementById('start-tpp').addEventListener('click', () => startExperi
 
 if (isMobileDevice) initMobileControls(controls);
 
-document.getElementById('toggle-mode').addEventListener('click', () => {
-  if (inVR) return;
-  controls.toggleMode();
-  updateCrosshairUI();
-});
-
 // Włącza tryb VR (cardboard). `startPos` to opcjonalny THREE.Vector3 —
 // gdy podany, gracz startuje w VR z tej pozycji (np. środek sali, przy
 // starcie z ekranu startowego); gdy pominięty, VR startuje z AKTUALNEJ
-// pozycji gracza (this kontynuacja sesji przy przełączaniu widoku
+// pozycji gracza (kontynuacja sesji przy przełączaniu widoku
 // FPP/TPP -> VR w locie, bez teleportowania go gdzie indziej).
 async function enterVR(startPos) {
   renderer.domElement.style.display = 'block';
@@ -430,7 +424,7 @@ async function enterVR(startPos) {
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   updateCrosshairUI();
-  
+
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź z VR';
   exitBtn.classList.remove('hidden');
@@ -446,6 +440,60 @@ function exitVR() {
   rig.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
   camera.aspect = window.innerWidth / window.innerHeight;
+  camera.near = 0.05;
   camera.updateProjectionMatrix();
   updateCrosshairUI();
+  document.getElementById('exit-btn').textContent = '✕ Wyjdź';
 }
+
+// Przycisk "Zmień widok" w HUD-zie: na komputerze przełącza tylko
+// pierwsza/trzecia osoba (VR niedostępne bez gogli), na Androidzie
+// cyklicznie przechodzi przez WSZYSTKIE trzy widoki: pierwsza osoba ->
+// trzecia osoba -> VR -> pierwsza osoba...
+async function cycleViewMode() {
+  const sequence = isMobileDevice ? ['fpp', 'tpp', 'vr'] : ['fpp', 'tpp'];
+  const current = inVR ? 'vr' : controls.mode;
+  const next = sequence[(sequence.indexOf(current) + 1) % sequence.length];
+
+  if (next === 'vr') {
+    if (!inVR) await enterVR();
+  } else {
+    if (inVR) exitVR();
+    controls.setMode(next);
+    updateCrosshairUI();
+  }
+}
+document.getElementById('toggle-mode').addEventListener('click', () => cycleViewMode());
+
+vrBtn.addEventListener('click', () => {
+  if (vrBtn.disabled) return;
+  // Start z ekranu startowego: bezpieczny start pozycji w VR — na samym
+  // środku głównej sali, z uwzględnieniem kolizji.
+  enterVR(new THREE.Vector3(loungeX, 0, 0));
+});
+
+document.getElementById('exit-btn').addEventListener('click', () => exitToIntro());
+
+// Wyjście z metaversu do ekranu startowego pod klawiszem Esc — działa
+// zarówno w trybie FPP/TPP (odblokowuje kursor, chowa HUD), jak i w VR
+// (dodatkowo wyłącza tryb cardboard, tak jak przycisk "Wyjdź z VR").
+function exitToIntro() {
+  const intro = document.getElementById('intro');
+  if (!intro.classList.contains('hidden')) return; // już jesteśmy na starcie
+
+  if (inVR) exitVR();
+  document.getElementById('exit-btn').classList.add('hidden');
+
+  if (document.pointerLockElement === renderer.domElement) {
+    document.exitPointerLock();
+  }
+
+  document.getElementById('joystick-base').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  intro.classList.remove('hidden');
+  renderer.domElement.style.display = 'none';
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') exitToIntro();
+});
