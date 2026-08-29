@@ -52,7 +52,10 @@ const DEFAULTS = {
     android_rotation_speed: 0.1,
     android_tilt_direction: 'front-right',
     android_tilt_angle: 15,
-    android_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych'
+    android_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych',
+
+    // ZMIANA: brakujący klucz — tapeta domyślnie włączona
+    wallpaperEnabled: true
 };
 
 const CONFIG_VERSION = '7';
