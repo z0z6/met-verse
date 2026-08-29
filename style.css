@@ -65,12 +65,10 @@ body > canvas {
     width: 92vw;
     padding: 16px 16px 18px;
     border-radius: 20px;
-    /* Bez backdrop-filter na telefonie: rozmycie tła to jeden z droższych
-       efektów kompozytora, a tutaj musi liczyć się non-stop nad animującym
-       się w tle WebGL — zwykłe, bardziej kryjące tło jest dużo tańsze
-       i wciąż dobrze czytelne. */
-    background: rgba(12,7,18,.86);
-    border: 1px solid rgba(255,255,255,.12);
+    /* Ten sam poziom przezroczystości/odcienia co w wersji na kompa
+       (.intro-panel wyżej) — na telefonie ma wyglądać identycznie. */
+    background: rgba(20,10,30,.38);
+    border: 1px solid rgba(255,255,255,.18);
   }
   .intro-panel h1 { font-size: 1.25rem; margin-bottom: 4px; }
   .intro-panel p { font-size: .8rem; margin-bottom: 14px; line-height: 1.35; }
@@ -114,12 +112,20 @@ body > canvas {
   pointer-events:none;
 }
 
-#reticle-ring {
-  position:absolute; bottom:12%; left:50%; transform:translateX(-50%);
+/* Celownik do teleportacji jest zduplikowany: w VR ekran dzieli się na
+   dwie połówki (lewe/prawe oko), więc jeden celownik na samym środku
+   ekranu wypadał dokładnie na granicy obu połówek i nie było go widać
+   wyraźnie w żadnym z oczu. Dwie kopie, wyśrodkowane każda w swojej
+   połówce, rozwiązują to bez zmiany logiki teleportacji (main.js steruje
+   obiema naraz przez klasę .reticle-ring / .reticle-fill). */
+.reticle-ring {
+  position:absolute; bottom:12%;
   width:48px; height:48px; border-radius:50%; border:2px solid rgba(255,255,255,.6);
   pointer-events:none; overflow:hidden; display:none;
 }
-#reticle-fill {
+.reticle-ring-left { left:25%; transform:translateX(-50%); }
+.reticle-ring-right { left:75%; transform:translateX(-50%); }
+.reticle-fill {
   position:absolute; bottom:0; left:0; width:100%; height:0%;
   background:rgba(255,255,255,.5); transition:height .1s linear;
 }
