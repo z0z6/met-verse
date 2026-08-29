@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Config } from "./config.js";
-import { getActiveConfig } from "./panelConfig.js";
+import { getPlatform, getGogglePosition } from "./panelConfig.js";
 
 const LINE_COLOR = 0x000000;
 const MODEL_TARGET_SIZE = 2.4;
@@ -22,9 +22,6 @@ const FRAME_INTERVAL = 1000 / TARGET_FPS;
 const RENDER_SCALE = 1;
 const EDGE_ANGLE_THRESHOLD = 15;
 const LINE_OPACITY = IS_MOBILE ? 1 : 0.85;
-
-const MOBILE_MODEL_Y_OFFSET = 0.78;
-const ANDROID_MODEL_Y_OFFSET = 0.5;
 
 const GRID_VERTEX = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const GRID_FRAGMENT = `
@@ -87,9 +84,7 @@ export function init(containerId = "canvas-container", options = {}) {
     rig = new THREE.Group();
     scene.add(rig);
     applyTilt();
-    if (IS_MOBILE && raiseOnMobile) {
-        rig.position.y = currentPlatform === 'android' ? ANDROID_MODEL_Y_OFFSET : MOBILE_MODEL_Y_OFFSET;
-    }
+    updateGogglePosition(); // Ustawienie początkowe na podstawie configu
 
     modelGroup = new THREE.Group();
     rig.add(modelGroup);
@@ -132,13 +127,19 @@ export function init(containerId = "canvas-container", options = {}) {
     window.addEventListener("resize", onResize);
     window.addEventListener("configchange", onConfigChange);
 
-    cachedRotationSpeed = Config.get('rotationSpeed');
-    cachedRotationDirection = Config.get('rotationDirection');
+    cachedRotationSpeed = Config.get(currentPlatform + '_rotation_speed');
+    cachedRotationDirection = Config.get(currentPlatform + '_rotation_direction');
     cachedGridEnabled = Config.get('gridEnabled');
 
     applyWallpaper();
-    applyPanelStyles();
     startLoop();
+}
+
+export function updateGogglePosition() {
+    if (!rig) return;
+    const pos = getGogglePosition(currentPlatform + '_');
+    rig.position.x = pos.x;
+    rig.position.y = pos.y;
 }
 
 function buildGrid() {
@@ -176,47 +177,16 @@ function applyScale() {
 
 function applyWallpaper() {
     if (!wallpaperLayer) return;
-    const enabled = Config.get('wallpaperEnabled');
-    const index = Config.get('wallpaperIndex');
+    const prefix = currentPlatform + '_';
+    const enabled = Config.get('wallpaperEnabled'); // Globalne włączenie
+    const index = Config.get(prefix + 'wallpaper_index');
     if (enabled) {
         wallpaperLayer.style.backgroundImage = `url('${WALLPAPERS[index] || WALLPAPERS[0]}')`;
         wallpaperLayer.style.opacity = '1';
-        wallpaperLayer.style.filter = `brightness(${Config.get('wallpaperBrightness')}) blur(${Config.get('wallpaperBlur')}px)`;
+        wallpaperLayer.style.filter = `brightness(${Config.get(prefix + 'wallpaper_brightness')}) blur(${Config.get(prefix + 'wallpaper_blur')}px)`;
     } else {
         wallpaperLayer.style.opacity = '0';
         wallpaperLayer.style.filter = 'none';
-    }
-}
-
-function applyPanelStyles() {
-    const cfg = getActiveConfig(currentPlatform);
-    const introPanel = document.querySelector('.intro-panel');
-    if (!introPanel) return;
-
-    introPanel.style.top = cfg.panel_v === 'top' ? '10%' : 'auto';
-    introPanel.style.bottom = cfg.panel_v === 'bottom' ? '10%' : 'auto';
-    introPanel.style.left = cfg.panel_h === 'left' ? '10%' : (cfg.panel_h === 'center' ? '50%' : 'auto');
-    introPanel.style.right = cfg.panel_h === 'right' ? '10%' : 'auto';
-    introPanel.style.transform = cfg.panel_h === 'center' ? `translateX(-50%) scale(${cfg.panel_size})` : `scale(${cfg.panel_size})`;
-    introPanel.style.opacity = cfg.panel_opacity;
-
-    const titleEl = document.querySelector('#intro h1');
-    const descEl = document.querySelector('#intro p:not(.hint)');
-    const hintEl = document.querySelector('#intro .hint');
-    if (titleEl) titleEl.textContent = cfg.panel_title;
-    if (descEl) descEl.textContent = cfg.panel_content_desc;
-    if (hintEl) hintEl.textContent = cfg.panel_btn_desc;
-}
-
-export function updatePlatformPreview(platform) {
-    currentPlatform = platform;
-    applyPanelStyles();
-    if (modelGroup && modelMaxDim > 0) {
-        const isMobilePreview = true;
-        const targetSize = platform === 'android' ? ANDROID_MODEL_TARGET_SIZE : MOBILE_MODEL_TARGET_SIZE;
-        const newBaseScale = targetSize / modelMaxDim;
-        modelGroup.scale.setScalar(newBaseScale * Config.get('scale'));
-        rig.position.y = platform === 'android' ? ANDROID_MODEL_Y_OFFSET : MOBILE_MODEL_Y_OFFSET;
     }
 }
 
@@ -226,8 +196,14 @@ function onConfigChange(e) {
     if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
     if (key === 'scale') applyScale();
     if (key === 'gridEnabled' && gridMesh) { gridMesh.visible = value; cachedGridEnabled = value; }
-    if (key === 'rotationSpeed') cachedRotationSpeed = value;
-    if (key === 'rotationDirection') cachedRotationDirection = value;
+    
+    if (key === currentPlatform + '_rotation_speed') cachedRotationSpeed = value;
+    if (key === currentPlatform + '_rotation_direction') cachedRotationDirection = value;
+    
+    if (key === currentPlatform + '_vr_x' || key === currentPlatform + '_vr_y') {
+        updateGogglePosition();
+    }
+
     if (gridMaterial) {
         if (key === 'gridDensity') gridMaterial.uniforms.uDensity.value = value;
         if (key === 'gridThickness') gridMaterial.uniforms.uThickness.value = value;
@@ -235,9 +211,8 @@ function onConfigChange(e) {
         if (key === 'gridSpeedX') gridMaterial.uniforms.uSpeed.value.x = value / 1000;
         if (key === 'gridSpeedY') gridMaterial.uniforms.uSpeed.value.y = value / 1000;
     }
-    if (['wallpaperEnabled', 'wallpaperIndex', 'wallpaperBrightness', 'wallpaperBlur'].includes(key)) applyWallpaper();
-    if (key.startsWith('desktop_panel_') || key.startsWith('android_panel_') || key.startsWith('desktop_vr_') || key.startsWith('android_vr_')) {
-        applyPanelStyles();
+    if (['wallpaperEnabled', currentPlatform + '_wallpaper_index', currentPlatform + '_wallpaper_brightness', currentPlatform + '_wallpaper_blur'].includes(key)) {
+        applyWallpaper();
     }
 }
 
@@ -277,6 +252,14 @@ function animateMobile() {
 function startLoop() {
     clock = new THREE.Clock();
     if (IS_MOBILE) animateMobile(); else animate();
+}
+
+export function setPreviewPlatform(platform) {
+    currentPlatform = platform;
+    cachedRotationSpeed = Config.get(currentPlatform + '_rotation_speed');
+    cachedRotationDirection = Config.get(currentPlatform + '_rotation_direction');
+    updateGogglePosition();
+    applyWallpaper();
 }
 
 export function destroy() {
