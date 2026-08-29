@@ -15,7 +15,6 @@
     }
     </script>
     <style>
-        /* GWARANCJA BRAKU MIGOTANIA: Canvas ukryty, intro widoczne od pierwszej klatki */
         #canvas-container {
             position: fixed;
             top: 0;
@@ -24,22 +23,9 @@
             height: 100vh;
             z-index: 0;
             pointer-events: none;
-            display: none !important; /* Kluczowe: zapobiega prześwitywaniu */
-        }
-        #intro {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex !important; /* Kluczowe: wymusza wyświetlenie */
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            pointer-events: none;
-            background: #111114; /* Tło zapobiegające białemu błyskowi */
         }
         .intro-panel {
+            position: fixed !important;
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -50,6 +36,7 @@
             width: 90%;
             pointer-events: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            z-index: 10;
         }
         .intro-panel h1 {
             font-size: 3rem;
@@ -117,7 +104,17 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             line-height: 1.6;
         }
+        #intro {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+        }
         
+        /* Android-specific styles */
         @media (max-width: 768px) and (pointer: coarse) {
             .intro-panel {
                 max-width: 95vw;
@@ -190,6 +187,15 @@
 <script type="module">
 import { Config } from './js/config.js';
 import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=13';
+import { applyPanelToElement } from './js/panelConfig.js';
+
+function positionIntroPanel() {
+    const platform = /Android/i.test(navigator.userAgent) ? 'android' : 'desktop';
+    const panel = document.querySelector('.intro-panel');
+    if (panel) {
+        applyPanelToElement(panel, platform + '_', null);
+    }
+}
 
 async function loadConfigAndInit() {
     try {
@@ -206,16 +212,36 @@ async function loadConfigAndInit() {
     
     document.body.style.background = Config.get('bgColor');
     
+    // Inicjalizacja tła z goglami i tapetą
     const isAndroid = /Android/i.test(navigator.userAgent);
     initVRHeadsetBg('canvas-container', { 
         raiseOnMobile: true,
         forcePlatform: isAndroid ? 'android' : 'desktop'
     });
+    
+    // Czekaj aż DOM i model 3D będą gotowe
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            positionIntroPanel();
+        });
+    });
 }
+
+window.addEventListener('configchange', (e) => {
+    const key = e.detail.key;
+    if (key.startsWith('desktop_panel_') || key.startsWith('android_panel_')) {
+        positionIntroPanel();
+    }
+});
+
+window.addEventListener('resize', () => {
+    positionIntroPanel();
+});
 
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
+<!-- ZMIANA: natychmiastowe ładowanie zamiast opóźnionego requestIdleCallback -->
 <script type="module" src="./src/main.js"></script>
 
 </body>
