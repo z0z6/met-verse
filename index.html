@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Galeria — Metavers</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -113,6 +113,37 @@
             z-index: 10;
             pointer-events: none;
         }
+        
+        /* Android-specific styles */
+        @media (max-width: 768px) and (pointer: coarse) {
+            .intro-panel {
+                max-width: 95vw;
+                width: 90vw;
+                padding: 32px 24px;
+            }
+            .intro-panel h1 {
+                font-size: 2rem;
+                letter-spacing: 2px;
+            }
+            .intro-panel > p {
+                font-size: 0.95rem;
+                margin-bottom: 20px;
+            }
+            .intro-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .mode-btn {
+                min-width: 100%;
+                padding: 14px 20px;
+                font-size: 0.9rem;
+            }
+            .hint {
+                font-size: 0.75rem;
+                margin-top: 16px;
+                padding-top: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -143,7 +174,7 @@
 
 <div id="hud" class="hidden">
     <button id="toggle-mode" class="hud-btn">🔄 Zmień widok</button>
-    <button id="exit-btn" class="hud-btn hidden" style="right:auto;left:16px;">✕ Wyjdź</button>
+    <button id="exit-btn" class="hud-btn hidden" style="right:auto;left:16px;"> Wyjdź</button>
     <div id="crosshair"></div>
     <div id="joystick-base" class="hidden">
         <div id="joystick-knob"></div>
@@ -155,7 +186,7 @@
 
 <script type="module">
 import { Config } from './js/config.js';
-import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=12';
+import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=13';
 import { applyPanelToElement } from './js/panelConfig.js';
 
 function positionIntroPanel() {
@@ -168,12 +199,9 @@ function positionIntroPanel() {
 
 async function loadConfigAndInit() {
     try {
-        // Cache-bust: dodaj timestamp, żeby przeglądarka nie cache'owała starego config.json
         const response = await fetch('config.json?t=' + Date.now());
         if (response.ok) {
             const jsonConfig = await response.json();
-            // ZAWSZE nadpisuj localStorage wartościami z config.json
-            // Dzięki temu po podmianie pliku w repo zmiany są widoczne
             for (const key in jsonConfig) {
                 Config.set(key, jsonConfig[key]);
             }
@@ -183,7 +211,13 @@ async function loadConfigAndInit() {
     }
     
     document.body.style.background = Config.get('bgColor');
-    initVRHeadsetBg('canvas-container', { raiseOnMobile: true });
+    
+    // Inicjalizacja tła z goglami i tapetą
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    initVRHeadsetBg('canvas-container', { 
+        raiseOnMobile: true,
+        forcePlatform: isAndroid ? 'android' : 'desktop'
+    });
     
     // Czekaj aż DOM i model 3D będą gotowe
     requestAnimationFrame(() => {
@@ -193,7 +227,6 @@ async function loadConfigAndInit() {
     });
 }
 
-// Nasłuchuj zmian configu (np. po imporcie JSON)
 window.addEventListener('configchange', (e) => {
     const key = e.detail.key;
     if (key.startsWith('desktop_panel_') || key.startsWith('android_panel_')) {
@@ -201,7 +234,6 @@ window.addEventListener('configchange', (e) => {
     }
 });
 
-// Pozycjonuj panel przy zmianie rozmiaru okna
 window.addEventListener('resize', () => {
     positionIntroPanel();
 });
