@@ -69,8 +69,8 @@
   <div id="joystick-base" class="hidden">
     <div id="joystick-knob"></div>
   </div>
-  <div class="reticle-ring reticle-ring-left"><div class="reticle-fill"></div></div>
-  <div class="reticle-ring reticle-ring-right"><div class="reticle-fill"></div></div>
+  <div class="reticle-ring reticle-ring-left"><div class="reticle-fill"></div><div class="reticle-dot"></div></div>
+  <div class="reticle-ring reticle-ring-right"><div class="reticle-fill"></div><div class="reticle-dot"></div></div>
   <div id="artwork-caption" class="hidden"></div>
 </div>
 
@@ -83,7 +83,7 @@ import { Config } from './js/config.js';
 // świeżej wersji. Przy każdej kolejnej zmianie w js/vr-headset-bg.js
 // podbij ten numer (v=3, v=4...), żeby wymusić natychmiastowe pobranie
 // nowej wersji zamiast czekać, aż CDN sam wygasi stary cache.
-import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=8';
+import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=9';
 
 async function loadConfigAndInit() {
   try {

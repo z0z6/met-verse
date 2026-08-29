@@ -117,9 +117,14 @@ body > canvas {
    ekranu wypadał dokładnie na granicy obu połówek i nie było go widać
    wyraźnie w żadnym z oczu. Dwie kopie, wyśrodkowane każda w swojej
    połówce, rozwiązują to bez zmiany logiki teleportacji (main.js steruje
-   obiema naraz przez klasę .reticle-ring / .reticle-fill). */
+   obiema naraz przez klasę .reticle-ring / .reticle-fill). Środek każdej
+   kopii ma teraz też własną kropkę celowniczą (.reticle-dot) — wcześniej
+   ta kropka istniała tylko jako pojedynczy #crosshair na środku CAŁEGO
+   ekranu, czyli znowu dokładnie na granicy lewego/prawego oka w VR.
+   Obie kopie (pierścień + kropka) są też niżej na ekranie (bottom:6%
+   zamiast 12%), żeby mniej absorbowały uwagę. */
 .reticle-ring {
-  position:absolute; bottom:12%;
+  position:absolute; bottom:6%;
   width:48px; height:48px; border-radius:50%; border:2px solid rgba(255,255,255,.6);
   pointer-events:none; overflow:hidden; display:none;
 }
@@ -128,6 +133,11 @@ body > canvas {
 .reticle-fill {
   position:absolute; bottom:0; left:0; width:100%; height:0%;
   background:rgba(255,255,255,.5); transition:height .1s linear;
+}
+.reticle-dot {
+  position:absolute; top:50%; left:50%; width:6px; height:6px;
+  transform:translate(-50%,-50%); border-radius:50%; background:rgba(255,255,255,.85);
+  pointer-events:none;
 }
 
 #joystick-base {
