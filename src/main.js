@@ -42,6 +42,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
+// ZMIANA: canvas gry musi być nad tłem (z-index:1) i prawidłowo pozycjonowany
+renderer.domElement.style.cssText =
+    'position:fixed;top:0;left:0;z-index:1;display:none;';
+
 // Zabezpieczenie "twarde": niezależnie od tego, co zrobi kamera (orbit w TPP,
 // obrót urządzenia w VR, jakikolwiek błąd proporcji stereo), NIC poza bryłą
 // budynku nigdy się nie wyrenderuje — płaszczyzny przycinania na zewnętrznych
@@ -55,7 +59,7 @@ renderer.clippingPlanes = [
 ];
 
 // Ukryj canvas metaversum na starcie, aby nie prześwitywał przez intro
-renderer.domElement.style.display = 'none';
+// (display:none jest już ustawione powyżej w cssText)
 
 // Rig gracza
 const rig = new THREE.Group();
@@ -244,10 +248,11 @@ const _captionDir = new THREE.Vector3();
 const _captionOrigin = new THREE.Vector3();
 function updateCaption() {
   const dir = _captionDir;
-  camera.getWorldDirection(dir);
   const origin = _captionOrigin;
-  camera.getWorldPosition(origin);
-  raycaster.set(origin, dir);
+  camera.getWorldDirection(dir);
+  const origin2 = _captionOrigin;
+  camera.getWorldPosition(origin2);
+  raycaster.set(origin2, dir);
   const targets = interactiveArtworks.flatMap(g => g.children);
   const hits = raycaster.intersectObjects(targets, false);
   const captionEl = document.getElementById('artwork-caption');
