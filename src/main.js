@@ -10,6 +10,7 @@ import { GalleryControls, keys } from './controls.js';
 import { CardboardMode } from './cardboard.js';
 import { getActiveGamepad, applyGamepadMovement } from './gamepad.js';
 import { initMobileControls } from './mobileControls.js';
+import { Config } from '../js/config.js'; // <-- DODANY IMPORT KONFIGURACJI
 
 // Wykrywanie urządzenia mobilnego — ta sama logika (i ten sam wynik) co w
 // js/vr-headset-bg.js, żeby ekran startowy i właściwa galeria zawsze się
@@ -185,10 +186,12 @@ function setReticleFillHeight(pct) {
 
 const isMobileDevice = IS_MOBILE;
 const vrBtn = document.getElementById('start-vr');
+
+// <-- ZMIANA: Użycie konfiguracji zamiast sztywnego tekstu -->
 if (!isMobileDevice) {
   vrBtn.disabled = true;
   vrBtn.classList.add('long-label');
-  vrBtn.querySelector('span').textContent = 'VR dostępne tylko w urządzeniach mobilnych';
+  vrBtn.querySelector('span').textContent = Config.get('desktop_vr_blocked_label') || 'VR dostępne tylko w urządzeniach mobilnych';
 }
 
 // Bezpieczny Promień Teleportacji VR (Zabezpieczenie przed przechodzeniem przez ściany)
