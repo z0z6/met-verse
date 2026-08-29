@@ -20,6 +20,7 @@ const DEFAULTS = {
     desktop_panel_y: 50,
     desktop_panel_size: 1.0,
     desktop_panel_opacity: 0.9,
+    desktop_panel_brightness: 1.3,
     desktop_panel_title: 'IMAGINARIUM',
     desktop_panel_content_desc: 'wirtualna przestrzeń wystawowa',
     desktop_panel_btn_desc: 'W A S D — ruch | mysz — rozglądanie | SHIFT — bieg',
@@ -40,6 +41,7 @@ const DEFAULTS = {
     android_panel_y: 90,
     android_panel_size: 0.9,
     android_panel_opacity: 0.9,
+    android_panel_brightness: 1.3,
     android_panel_title: 'IMAGINARIUM',
     android_panel_content_desc: 'wirtualna przestrzeń wystawowa',
     android_panel_btn_desc: 'Dotknij, aby wybrać tryb',
@@ -53,7 +55,7 @@ const DEFAULTS = {
     android_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych'
 };
 
-const CONFIG_VERSION = '6';
+const CONFIG_VERSION = '7';
 const VERSION_KEY = 'metaverse_configVersion';
 
 function migrateIfNeeded() {
