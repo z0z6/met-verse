@@ -1,52 +1,48 @@
 import { Config } from './config.js';
 
-const IS_ANDROID = /Android/i.test(navigator.userAgent);
-const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
 
+/** Na telefonie (Android + iOS) używamy kluczy android_* z configu */
 export function getPlatform() {
-    return IS_ANDROID ? 'android' : 'desktop';
+    return IS_MOBILE ? 'android' : 'desktop';
 }
 
 export function applyPanelToElement(element, prefix, containerEl = null) {
     if (!element) return;
-    
+
     const x = Config.get(prefix + 'panel_x');
     const y = Config.get(prefix + 'panel_y');
     const size = Config.get(prefix + 'panel_size');
     const opacity = Config.get(prefix + 'panel_opacity');
     const brightness = Config.get(prefix + 'panel_brightness');
-    
-    // Kontener odniesienia
+
     const refW = containerEl ? containerEl.clientWidth : window.innerWidth;
     const refH = containerEl ? containerEl.clientHeight : window.innerHeight;
-    
-    // Ustawiamy position
+
     if (containerEl) {
         element.style.position = 'absolute';
     } else {
         element.style.position = 'fixed';
     }
-    
-    // Pobierz bazowy rozmiar elementu (BEZ transformacji scale)
-    // getBoundingClientRect zwraca rozmiar po scale, więc używamy offsetWidth/Height
-    const baseW = element.offsetWidth;
-    const baseH = element.offsetHeight;
-    
-    // Rozmiar po skalowaniu
+
+    // Tymczasowo bez scale, żeby zmierzyć bazowy rozmiar
+    const prevTransform = element.style.transform;
+    element.style.transform = 'none';
+
+    const baseW = element.offsetWidth || 1;
+    const baseH = element.offsetHeight || 1;
+
     const scaledW = baseW * size;
     const scaledH = baseH * size;
-    
-    // Maksymalne przesunięcie (żeby element nie wyszedł poza kontener)
+
     const maxOffsetX = Math.max(0, refW - scaledW);
     const maxOffsetY = Math.max(0, refH - scaledH);
-    
-    // Oblicz pozycję lewej krawędzi
-    // X=0 → left=0 (lewa krawędź przy lewej krawędzi kontenera)
-    // X=50 → left=maxOffsetX/2 (idealne wycentrowanie)
-    // X=100 → left=maxOffsetX (prawa krawędź przy prawej krawędzi kontenera)
+
+    // X/Y 0–100%: 0 = lewa/góra, 50 = środek, 100 = prawa/dół (w granicach kontenera)
     const leftPx = (x / 100) * maxOffsetX;
     const topPx = (y / 100) * maxOffsetY;
-    
+
     element.style.left = leftPx + 'px';
     element.style.top = topPx + 'px';
     element.style.right = 'auto';
@@ -54,13 +50,13 @@ export function applyPanelToElement(element, prefix, containerEl = null) {
     element.style.transform = `scale(${size})`;
     element.style.transformOrigin = 'top left';
     element.style.opacity = opacity;
-    
-    // Jasność panelu (efekt glass)
-    // brightness=1.0 to normalna jasność, >1.0 rozjaśnia
     element.style.filter = `brightness(${brightness})`;
     element.style.webkitFilter = `brightness(${brightness})`;
-    
-    // Aktualizacja treści
+
+    if (prevTransform && prevTransform !== 'none' && !size) {
+        element.style.transform = prevTransform;
+    }
+
     const titleEl = element.querySelector('h1');
     const descEl = element.querySelector('p:not(.hint):not(.preview-desc)');
     const hintEl = element.querySelector('.hint');
