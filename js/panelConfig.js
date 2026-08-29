@@ -14,30 +14,38 @@ export function applyPanelToElement(element, prefix, containerEl = null) {
     const y = Config.get(prefix + 'panel_y');
     const size = Config.get(prefix + 'panel_size');
     const opacity = Config.get(prefix + 'panel_opacity');
+    const brightness = Config.get(prefix + 'panel_brightness');
     
-    // Kontener odniesienia: jeśli podany (np. ramka telefonu), użyj jego wymiarów; inaczej viewport
+    // Kontener odniesienia
     const refW = containerEl ? containerEl.clientWidth : window.innerWidth;
     const refH = containerEl ? containerEl.clientHeight : window.innerHeight;
     
-    // Ustawiamy position relative do kontenera (lub fixed do viewport)
+    // Ustawiamy position
     if (containerEl) {
         element.style.position = 'absolute';
     } else {
         element.style.position = 'fixed';
     }
     
-    // Oblicz pozycję w pikselach:
-    // X=0 → lewa krawędź elementu dotyka lewej krawędzi kontenera
-    // X=100 → prawa krawędź elementu dotyka prawej krawędzi kontenera
-    // Uwzględniamy skalowanie - element jest renderowany w rozmiarze bazowym, potem skalowany
-    const baseW = element.offsetWidth / size;
-    const baseH = element.offsetHeight / size;
+    // Pobierz bazowy rozmiar elementu (BEZ transformacji scale)
+    // getBoundingClientRect zwraca rozmiar po scale, więc używamy offsetWidth/Height
+    const baseW = element.offsetWidth;
+    const baseH = element.offsetHeight;
     
-    const availableW = refW - baseW * size;
-    const availableH = refH - baseH * size;
+    // Rozmiar po skalowaniu
+    const scaledW = baseW * size;
+    const scaledH = baseH * size;
     
-    const leftPx = Math.max(0, (x / 100) * availableW);
-    const topPx = Math.max(0, (y / 100) * availableH);
+    // Maksymalne przesunięcie (żeby element nie wyszedł poza kontener)
+    const maxOffsetX = Math.max(0, refW - scaledW);
+    const maxOffsetY = Math.max(0, refH - scaledH);
+    
+    // Oblicz pozycję lewej krawędzi
+    // X=0 → left=0 (lewa krawędź przy lewej krawędzi kontenera)
+    // X=50 → left=maxOffsetX/2 (idealne wycentrowanie)
+    // X=100 → left=maxOffsetX (prawa krawędź przy prawej krawędzi kontenera)
+    const leftPx = (x / 100) * maxOffsetX;
+    const topPx = (y / 100) * maxOffsetY;
     
     element.style.left = leftPx + 'px';
     element.style.top = topPx + 'px';
@@ -46,6 +54,11 @@ export function applyPanelToElement(element, prefix, containerEl = null) {
     element.style.transform = `scale(${size})`;
     element.style.transformOrigin = 'top left';
     element.style.opacity = opacity;
+    
+    // Jasność panelu (efekt glass)
+    // brightness=1.0 to normalna jasność, >1.0 rozjaśnia
+    element.style.filter = `brightness(${brightness})`;
+    element.style.webkitFilter = `brightness(${brightness})`;
     
     // Aktualizacja treści
     const titleEl = element.querySelector('h1');
