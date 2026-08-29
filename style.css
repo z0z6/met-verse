@@ -90,8 +90,8 @@ body {
 /* Reticle rings (VR only) — DOMYŚLNIE UKRYTE */
 .reticle-ring {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 18%;
+  transform: none;
   width: 24px;
   height: 24px;
   border: 2px solid rgba(255, 255, 255, 0.6);
