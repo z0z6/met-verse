@@ -7,14 +7,14 @@ const $ = id => document.getElementById(id);
 const ADMIN_KEYS = [
     'desktop_vr_x', 'desktop_vr_y', 'desktop_vr_size',
     'desktop_panel_x', 'desktop_panel_y',
-    'desktop_panel_size', 'desktop_panel_opacity',
+    'desktop_panel_size', 'desktop_panel_opacity', 'desktop_panel_brightness',
     'desktop_panel_title', 'desktop_panel_content_desc', 'desktop_panel_btn_desc',
     'desktop_wallpaper_index', 'desktop_wallpaper_brightness', 'desktop_wallpaper_blur',
     'desktop_rotation_direction', 'desktop_rotation_speed',
     'desktop_tilt_direction', 'desktop_tilt_angle',
     'android_vr_x', 'android_vr_y', 'android_vr_size',
     'android_panel_x', 'android_panel_y',
-    'android_panel_size', 'android_panel_opacity',
+    'android_panel_size', 'android_panel_opacity', 'android_panel_brightness',
     'android_panel_title', 'android_panel_content_desc', 'android_panel_btn_desc',
     'android_wallpaper_index', 'android_wallpaper_brightness', 'android_wallpaper_blur',
     'android_rotation_direction', 'android_rotation_speed',
@@ -61,7 +61,6 @@ function updateMockPanel(platform) {
         $('btnPreviewDesktop').classList.add('active');
         $('btnPreviewAndroid').classList.remove('active');
         
-        // Dla desktop: panel pozycjonowany względem całego viewport podglądu
         applyPanelToElement($('mock-panel-desktop'), 'desktop_', null);
     } else {
         $('desktop-preview').style.display = 'none';
@@ -69,7 +68,6 @@ function updateMockPanel(platform) {
         $('btnPreviewDesktop').classList.remove('active');
         $('btnPreviewAndroid').classList.add('active');
         
-        // Dla Android: panel pozycjonowany względem ramki telefonu
         applyPanelToElement($('mock-panel-android'), 'android_', $('phone-frame'));
     }
     
@@ -90,7 +88,6 @@ function bindEvents() {
             Config.set(key, val);
             updateBadge(key, val);
             
-            // Aktualizuj podgląd dla odpowiedniej platformy
             if (key.startsWith('desktop_')) {
                 if (currentPreviewPlatform === 'desktop') {
                     updateMockPanel('desktop');
@@ -108,7 +105,6 @@ function bindEvents() {
         el.addEventListener('change', handler);
     });
 
-    // Przełączniki podglądu
     $('btnPreviewDesktop').addEventListener('click', () => updateMockPanel('desktop'));
     $('btnPreviewAndroid').addEventListener('click', () => updateMockPanel('android'));
 
