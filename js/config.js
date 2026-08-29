@@ -1,7 +1,3 @@
-// UWAGA: te wartości to jednocześnie "domyślny wygląd" strony, gdy z jakiegoś
-// powodu config.json nie uda się wczytać (offline, błąd sieci, mobile itd.).
-// Muszą więc być identyczne z tym, co jest w config.json — inaczej wracamy
-// do starego problemu "dwóch różnych stron startowych".
 const DEFAULTS = {
     bgColor: '#d6d6d6',
     particleColor: '#000000',
@@ -20,16 +16,32 @@ const DEFAULTS = {
     wallpaperEnabled: true,
     wallpaperIndex: 2,
     wallpaperBrightness: 1.05,
-    wallpaperBlur: 0
+    wallpaperBlur: 0,
+    // Desktop VR & Panel
+    desktop_vr_v: 'bottom',
+    desktop_vr_h: 'center',
+    desktop_panel_v: 'bottom',
+    desktop_panel_h: 'center',
+    desktop_panel_opacity: 0.9,
+    desktop_panel_size: 1.0,
+    desktop_panel_title: 'IMAGINARIUM',
+    desktop_panel_content_desc: 'wirtualna przestrzeń wystawowa',
+    desktop_panel_btn_desc: 'W A S D — ruch  |  mysz — rozglądanie (kliknij ekran, by zablokować kursor)  |  SHIFT — bieg',
+    desktop_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych',
+    // Android VR & Panel
+    android_vr_v: 'bottom',
+    android_vr_h: 'center',
+    android_panel_v: 'bottom',
+    android_panel_h: 'center',
+    android_panel_opacity: 0.9,
+    android_panel_size: 1.0,
+    android_panel_title: 'IMAGINARIUM',
+    android_panel_content_desc: 'wirtualna przestrzeń wystawowa',
+    android_panel_btn_desc: 'Dotknij, aby wybrać tryb',
+    android_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych'
 };
 
-// Wersja "schematu" configu. Podbij ten numer za każdym razem, gdy zmieniasz
-// wartości domyślne powyżej (np. w Panelu Admina ustawiasz nową tapetę jako
-// domyślną). Dzięki temu urządzenia, które mają w localStorage zapisane
-// STARE wartości (np. telefon, na którym strona była otwarta zanim dodano
-// tapetę), same się "odświeżą" przy najbliższej wizycie zamiast trzymać
-// stary wygląd w nieskończoność.
-const CONFIG_VERSION = '2';
+const CONFIG_VERSION = '3';
 const VERSION_KEY = 'metaverse_configVersion';
 
 function migrateIfNeeded() {
@@ -37,7 +49,6 @@ function migrateIfNeeded() {
         const storedVersion = localStorage.getItem(VERSION_KEY);
         if (storedVersion === CONFIG_VERSION) return;
 
-        // Czyścimy tylko klucze naszej apki, nic więcej w localStorage.
         const toRemove = [];
         for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
@@ -47,10 +58,7 @@ function migrateIfNeeded() {
         }
         toRemove.forEach(k => localStorage.removeItem(k));
         localStorage.setItem(VERSION_KEY, CONFIG_VERSION);
-    } catch (e) {
-        // localStorage niedostępny (np. tryb prywatny) — nic się nie stanie,
-        // po prostu zawsze będą używane DEFAULTS / config.json.
-    }
+    } catch (e) {}
 }
 migrateIfNeeded();
 
