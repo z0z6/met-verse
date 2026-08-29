@@ -1,10 +1,6 @@
 import * as THREE from 'three';
 import { generateWallSlots } from './room.js';
 
-// Ta sama detekcja co w main.js / room.js / vr-headset-bg.js.
-const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-  || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
-
 const loader = new THREE.TextureLoader();
 const MAX_H = 2.0; // maksymalna wysokość obrazu (m)
 const FRAME_PAD = 0.08; // szerokość ramy
@@ -72,18 +68,11 @@ function buildFrame(group, texture, maxWidth, aspect) {
   img.position.z = IMG_Z;
   group.add(img);
 
-  // Dedykowany spot punktowy na obraz — pomijany na mobile. Przy 18 slotach
-  // na ścianach to 18 dodatkowych świateł realtime liczonych w KAŻDYM
-  // fragment shaderze sceny (podłoga, ściany, meble...), niezależnie od
-  // odległości — a w VR scena renderuje się dwukrotnie na klatkę (stereo).
-  // To był główny powód przycinek przy obrocie głową na Androidzie.
-  // Obrazy nadal są dobrze widoczne dzięki światłu ambient/hemisphere
-  // i głównym reflektorom sal (SpotLight) z room.js.
-  if (!IS_MOBILE) {
-    const light = new THREE.PointLight(0xfff5e6, 8, 3, 2);
-    light.position.set(0, h / 2 + 0.5, 0.6);
-    group.add(light);
-  }
+  // Dedykowany spot punktowy na obraz — ten sam na Androidzie i na komputerze
+  // (wcześniejsza wersja oświetlenia, sprzed pomijania go na mobile).
+  const light = new THREE.PointLight(0xfff5e6, 8, 3, 2);
+  light.position.set(0, h / 2 + 0.5, 0.6);
+  group.add(light);
 
   return h;
 }

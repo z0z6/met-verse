@@ -403,6 +403,11 @@ async function enterVR(startPos) {
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   setReticleDisplay('block');
+  // Pojedynczy #crosshair na środku CAŁEGO ekranu ma sens tylko w FPP/TPP
+  // (bez podziału na dwoje oczu) — w VR wypadałby na granicy lewego/prawego
+  // widoku, więc go chowamy; jego rolę w VR przejmują kropki wewnątrz
+  // .reticle-ring-left/-right.
+  document.getElementById('crosshair').classList.add('hidden');
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź z VR';
   exitBtn.classList.remove('hidden');
@@ -420,6 +425,7 @@ function exitVR() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   setReticleDisplay('none');
+  document.getElementById('crosshair').classList.remove('hidden');
   document.getElementById('exit-btn').textContent = '✕ Wyjdź';
 }
 
