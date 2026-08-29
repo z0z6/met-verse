@@ -6,84 +6,34 @@
     <title>Panel Administracyjny</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <script>
+        if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 900)) {
+            document.body.innerHTML = '<div style="color:white; text-align:center; padding:50px; font-family:sans-serif; background:#111; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center;"><h1>🚫 Dostęp zablokowany</h1><p>Panel administracyjny jest dostępny tylko z poziomu komputera.</p></div>';
+            throw new Error('Mobile access blocked');
+        }
+    </script>
     <style>
         .admin-layout { display: flex; height: 100vh; }
-        .admin-sidebar {
-            width: 380px;
-            background: rgba(20,20,20,0.95);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255,255,255,0.1);
-            overflow-y: auto;
-            padding: 24px;
-            color: #fff;
-            z-index: 10;
-        }
-        .admin-preview {
-            flex: 1;
-            position: relative;
-            background: transparent;
-        }
-        .admin-preview #canvas-container {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-        }
-        .control-group {
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .control-group label {
-            display: block;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #888;
-            margin-bottom: 8px;
-        }
-        .control-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-        input[type="color"] {
-            width: 48px; height: 32px; border: none; border-radius: 6px; cursor: pointer;
-            background: none;
-        }
-        input[type="range"] {
-            flex: 1; accent-color: #0a84ff;
-        }
-        select {
-            width: 100%; padding: 8px 10px; border-radius: 8px;
-            background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15);
-        }
-        .toggle-switch {
-            position: relative; width: 48px; height: 28px;
-        }
+        .admin-sidebar { width: 380px; background: rgba(20,20,20,0.95); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.1); overflow-y: auto; padding: 24px; color: #fff; z-index: 10; }
+        .admin-preview { flex: 1; position: relative; background: transparent; }
+        .admin-preview #canvas-container { position: absolute; top:0; left:0; width:100%; height:100%; }
+        .control-group { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .control-group label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 8px; }
+        .control-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        input[type="color"] { width: 48px; height: 32px; border: none; border-radius: 6px; cursor: pointer; background: none; }
+        input[type="range"] { flex: 1; accent-color: #0a84ff; }
+        select, input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+        .toggle-switch { position: relative; width: 48px; height: 28px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #39393d; border-radius: 28px; transition: .3s;
-        }
-        .toggle-slider:before {
-            position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px;
-            background-color: white; border-radius: 50%; transition: .3s;
-        }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #39393d; border-radius: 28px; transition: .3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
         input:checked + .toggle-slider { background-color: #34c759; }
         input:checked + .toggle-slider:before { transform: translateX(20px); }
-        .value-badge {
-            background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;
-            font-size: 12px; min-width: 36px; text-align: center;
-        }
-        .admin-title {
-            font-size: 20px; font-weight: 600; margin-bottom: 24px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .btn-export, .btn-import {
-            width: 100%; padding: 10px; border-radius: 10px; border: none;
-            font-weight: 500; cursor: pointer; margin-top: 8px;
-        }
-        .btn-export { background: #0a84ff; color: white; }
-        .btn-import { background: rgba(255,255,255,0.1); color: white; }
+        .value-badge { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 12px; min-width: 36px; text-align: center; }
+        .admin-title { font-size: 20px; font-weight: 600; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+        .btn-export, .btn-import { width: 100%; padding: 10px; border-radius: 10px; border: none; font-weight: 500; cursor: pointer; margin-top: 8px; color: white; }
+        .btn-export { background: #0a84ff; }
+        .btn-import { background: rgba(255,255,255,0.1); }
     </style>
     <script type="importmap">
     {
@@ -100,11 +50,46 @@
             <div class="admin-title">⚙️ Panel Administracyjny</div>
 
             <div class="control-group">
-                <label>Kolor tła</label>
+                <label>Podgląd platformy</label>
                 <div class="control-row">
-                    <input type="color" id="bgColor" value="#050505">
-                    <span class="value-badge" id="bgColorVal">#050505</span>
+                    <button id="previewDesktop" class="btn-import" style="flex:1;">💻 Desktop</button>
+                    <button id="previewAndroid" class="btn-import" style="flex:1;">📱 Android</button>
                 </div>
+            </div>
+
+            <div class="control-group">
+                <label>Pozycja gogli VR</label>
+                <div class="control-row"><span>Pion</span><select id="desktop_vr_v"><option value="top">Góra</option><option value="bottom">Dół</option></select></div>
+                <div class="control-row"><span>Poziom</span><select id="desktop_vr_h"><option value="left">Lewo</option><option value="center">Środek</option><option value="right">Prawo</option></select></div>
+            </div>
+
+            <div class="control-group">
+                <label>Okno wyboru (Desktop)</label>
+                <div class="control-row"><span>Pion</span><select id="desktop_panel_v"><option value="top">Góra</option><option value="bottom">Dół</option></select></div>
+                <div class="control-row"><span>Poziom</span><select id="desktop_panel_h"><option value="left">Lewo</option><option value="center">Środek</option><option value="right">Prawo</option></select></div>
+                <div class="control-row"><span>Przezroczystość</span><input type="range" id="desktop_panel_opacity" min="0.1" max="1" step="0.05"><span class="value-badge" id="desktop_panel_opacity_val">0.90</span></div>
+                <div class="control-row"><span>Rozmiar</span><input type="range" id="desktop_panel_size" min="0.5" max="2" step="0.1"><span class="value-badge" id="desktop_panel_size_val">1.0</span></div>
+                <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Tytuł</span><input type="text" id="desktop_panel_title"></div>
+                <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Opis zawartości</span><input type="text" id="desktop_panel_content_desc"></div>
+                <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Opis guzików wyboru</span><input type="text" id="desktop_panel_btn_desc"></div>
+            </div>
+
+            <div class="control-group">
+                <label>Okno wyboru (Android)</label>
+                <div class="control-row"><span>Pion</span><select id="android_vr_v"><option value="top">Góra</option><option value="bottom">Dół</option></select></div>
+                <div class="control-row"><span>Poziom</span><select id="android_vr_h"><option value="left">Lewo</option><option value="center">Środek</option><option value="right">Prawo</option></select></div>
+                <div class="control-row"><span>Pion panelu</span><select id="android_panel_v"><option value="top">Góra</option><option value="bottom">Dół</option></select></div>
+                <div class="control-row"><span>Poziom panelu</span><select id="android_panel_h"><option value="left">Lewo</option><option value="center">Środek</option><option value="right">Prawo</option></select></div>
+                <div class="control-row"><span>Przezroczystość</span><input type="range" id="android_panel_opacity" min="0.1" max="1" step="0.05"><span class="value-badge" id="android_panel_opacity_val">0.90</span></div>
+                <div class="control-row"><span>Rozmiar</span><input type="range" id="android_panel_size" min="0.5" max="2" step="0.1"><span class="value-badge" id="android_panel_size_val">1.0</span></div>
+                <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Tytuł</span><input type="text" id="android_panel_title"></div>
+                <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Opis zawartości</span><input type="text" id="android_panel_content_desc"></div>
+                <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Opis guzików wyboru</span><input type="text" id="android_panel_btn_desc"></div>
+            </div>
+
+            <div class="control-group">
+                <label>Kolor tła</label>
+                <div class="control-row"><input type="color" id="bgColor" value="#050505"><span class="value-badge" id="bgColorVal">#050505</span></div>
             </div>
 
             <div class="control-group">
@@ -119,105 +104,38 @@
 
             <div class="control-group">
                 <label>Kąt wychylenia</label>
-                <div class="control-row">
-                    <span>Kąt</span>
-                    <input type="range" id="tiltAngleRange" min="0" max="90" value="45">
-                    <span class="value-badge" id="tiltAngleVal">45°</span>
-                </div>
+                <div class="control-row"><span>Kąt</span><input type="range" id="tiltAngleRange" min="0" max="90" value="45"><span class="value-badge" id="tiltAngleVal">45°</span></div>
             </div>
 
             <div class="control-group">
                 <label>Skala (powiększenie)</label>
-                <div class="control-row">
-                    <span>Rozmiar</span>
-                    <input type="range" id="scaleRange" min="50" max="300" value="100">
-                    <span class="value-badge" id="scaleVal">1.00x</span>
-                </div>
+                <div class="control-row"><span>Rozmiar</span><input type="range" id="scaleRange" min="50" max="300" value="100"><span class="value-badge" id="scaleVal">1.00x</span></div>
             </div>
 
             <div class="control-group">
                 <label>Rotacja</label>
-                <div class="control-row">
-                    <span>Kierunek</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="directionToggle" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span id="dirLabel">Prawo</span>
-                </div>
-                <div class="control-row">
-                    <span>Prędkość</span>
-                    <input type="range" id="speedRange" min="0" max="200" value="50">
-                    <span class="value-badge" id="speedVal">0.50</span>
-                </div>
+                <div class="control-row"><span>Kierunek</span><label class="toggle-switch"><input type="checkbox" id="directionToggle" checked><span class="toggle-slider"></span></label><span id="dirLabel">Prawo</span></div>
+                <div class="control-row"><span>Prędkość</span><input type="range" id="speedRange" min="0" max="200" value="50"><span class="value-badge" id="speedVal">0.50</span></div>
             </div>
 
             <div class="control-group">
                 <label>Tapeta w tle (pod goglami VR)</label>
-                <div class="control-row">
-                    <span>Włącz tapetę</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="wallpaperEnabledToggle">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
+                <div class="control-row"><span>Włącz tapetę</span><label class="toggle-switch"><input type="checkbox" id="wallpaperEnabledToggle"><span class="toggle-slider"></span></label></div>
                 <div id="wallpaperOptions" style="flex-direction: column; gap: 10px; margin-top: 12px; opacity: 0.5; pointer-events: none;">
-                    <div class="control-row">
-                        <span style="font-size: 0.85rem; min-width: 70px;">Obraz</span>
-                        <select id="wallpaperSelect" style="flex: 1;">
-                            <option value="0">Tapeta 1</option>
-                            <option value="1">Tapeta 2</option>
-                            <option value="2">Tapeta 3</option>
-                            <option value="3">Tapeta 4</option>
-                            <option value="4">Tapeta 5</option>
-                        </select>
-                    </div>
-                    <div class="control-row">
-                        <span style="font-size: 0.85rem; min-width: 70px;">Jasność</span>
-                        <input type="range" id="wallpaperBrightnessRange" min="0.1" max="2" step="0.05">
-                        <span class="value-badge" id="wallpaperBrightnessVal">1.00</span>
-                    </div>
-                    <div class="control-row">
-                        <span style="font-size: 0.85rem; min-width: 70px;">Rozmycie</span>
-                        <input type="range" id="wallpaperBlurRange" min="0" max="50" step="1">
-                        <span class="value-badge" id="wallpaperBlurVal">0</span>
-                    </div>
+                    <div class="control-row"><span style="font-size: 0.85rem; min-width: 70px;">Obraz</span><select id="wallpaperSelect" style="flex: 1;"><option value="0">Tapeta 1</option><option value="1">Tapeta 2</option><option value="2">Tapeta 3</option><option value="3">Tapeta 4</option><option value="4">Tapeta 5</option></select></div>
+                    <div class="control-row"><span style="font-size: 0.85rem; min-width: 70px;">Jasność</span><input type="range" id="wallpaperBrightnessRange" min="0.1" max="2" step="0.05"><span class="value-badge" id="wallpaperBrightnessVal">1.00</span></div>
+                    <div class="control-row"><span style="font-size: 0.85rem; min-width: 70px;">Rozmycie</span><input type="range" id="wallpaperBlurRange" min="0" max="50" step="1"><span class="value-badge" id="wallpaperBlurVal">0</span></div>
                 </div>
             </div>
 
             <div class="control-group">
                 <label>Siatka w tle</label>
-                <div class="control-row">
-                    <span>Włącz siatkę</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="gridEnabledToggle" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="control-row">
-                    <input type="color" id="gridColor" value="#1a4d6e">
-                    <span class="value-badge" id="gridColorVal">#1a4d6e</span>
-                </div>
-                <div class="control-row">
-                    <span>Zagęszczenie</span>
-                    <input type="range" id="gridDensity" min="5" max="100" value="20">
-                    <span class="value-badge" id="gridDensityVal">20</span>
-                </div>
-                <div class="control-row">
-                    <span>Grubość linii</span>
-                    <input type="range" id="gridThickness" min="1" max="50" value="15">
-                    <span class="value-badge" id="gridThicknessVal">0.15</span>
-                </div>
-                <div class="control-row">
-                    <span>Prędkość X</span>
-                    <input type="range" id="gridSpeedX" min="-100" max="100" value="10">
-                    <span class="value-badge" id="gridSpeedXVal">0.10</span>
-                </div>
-                <div class="control-row">
-                    <span>Prędkość Y</span>
-                    <input type="range" id="gridSpeedY" min="-100" max="100" value="0">
-                    <span class="value-badge" id="gridSpeedYVal">0.00</span>
-                </div>
+                <div class="control-row"><span>Włącz siatkę</span><label class="toggle-switch"><input type="checkbox" id="gridEnabledToggle" checked><span class="toggle-slider"></span></label></div>
+                <div class="control-row"><input type="color" id="gridColor" value="#1a4d6e"><span class="value-badge" id="gridColorVal">#1a4d6e</span></div>
+                <div class="control-row"><span>Zagęszczenie</span><input type="range" id="gridDensity" min="5" max="100" value="20"><span class="value-badge" id="gridDensityVal">20</span></div>
+                <div class="control-row"><span>Grubość linii</span><input type="range" id="gridThickness" min="1" max="50" value="15"><span class="value-badge" id="gridThicknessVal">0.15</span></div>
+                <div class="control-row"><span>Prędkość X</span><input type="range" id="gridSpeedX" min="-100" max="100" value="10"><span class="value-badge" id="gridSpeedXVal">0.10</span></div>
+                <div class="control-row"><span>Prędkość Y</span><input type="range" id="gridSpeedY" min="-100" max="100" value="0"><span class="value-badge" id="gridSpeedYVal">0.00</span></div>
             </div>
 
             <button class="btn-export" id="exportBtn">📥 Eksportuj JSON</button>
@@ -232,7 +150,7 @@
     </div>
 
     <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/vr-headset-bg.js?v=8"></script>
+    <script type="module" src="js/vr-headset-bg.js?v=10"></script>
     <script type="module" src="js/admin.js"></script>
 </body>
 </html>
