@@ -42,7 +42,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
-// ZMIANA: canvas gry musi być nad tłem (z-index:1) i prawidłowo pozycjonowany
+// Canvas gry musi być nad tłem (z-index:1) i prawidłowo pozycjonowany
 renderer.domElement.style.cssText =
     'position:fixed;top:0;left:0;z-index:1;display:none;';
 
@@ -57,9 +57,6 @@ renderer.clippingPlanes = [
   new THREE.Plane(new THREE.Vector3(1, 0, 0), -BOUNDS.minX + CLIP_MARGIN),     // zach.
   new THREE.Plane(new THREE.Vector3(-1, 0, 0), BOUNDS.maxX + CLIP_MARGIN),     // wsch.
 ];
-
-// Ukryj canvas metaversum na starcie, aby nie prześwitywał przez intro
-// (display:none jest już ustawione powyżej w cssText)
 
 // Rig gracza
 const rig = new THREE.Group();
@@ -366,6 +363,11 @@ function startExperience(mode) {
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
 
+  // Celownik: kropka tylko w FPP, reticle VR ukryte
+  const crosshair = document.getElementById('crosshair');
+  crosshair.classList.toggle('hidden', mode !== 'fpp');
+  setReticleDisplay('none');
+
   // Przycisk wyjścia widoczny we WSZYSTKICH trybach — na Androidzie nie ma
   // klawisza Esc, więc to jedyny sposób na powrót do ekranu startowego.
   const exitBtn = document.getElementById('exit-btn');
@@ -411,11 +413,10 @@ async function enterVR(startPos) {
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   setReticleDisplay('block');
-  // Pojedynczy #crosshair na środku CAŁEGO ekranu ma sens tylko w FPP/TPP
-  // (bez podziału na dwoje oczu) — w VR wypadałby na granicy lewego/prawego
-  // widoku, więc go chowamy; jego rolę w VR przejmują kropki wewnątrz
-  // .reticle-ring-left/-right.
+  
+  // Kropka FPP chowana w VR (rolę przejmują reticle-ring-left/-right)
   document.getElementById('crosshair').classList.add('hidden');
+  
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź z VR';
   exitBtn.classList.remove('hidden');
@@ -433,57 +434,5 @@ function exitVR() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   setReticleDisplay('none');
-  document.getElementById('crosshair').classList.remove('hidden');
-  document.getElementById('exit-btn').textContent = '✕ Wyjdź';
-}
-
-// Przycisk "Zmień widok" w HUD-zie: na komputerze przełącza tylko
-// pierwsza/trzecia osoba (VR niedostępne bez gogli), na Androidzie
-// cyklicznie przechodzi przez WSZYSTKIE trzy widoki: pierwsza osoba ->
-// trzecia osoba -> VR -> pierwsza osoba...
-async function cycleViewMode() {
-  const sequence = isMobileDevice ? ['fpp', 'tpp', 'vr'] : ['fpp', 'tpp'];
-  const current = inVR ? 'vr' : controls.mode;
-  const next = sequence[(sequence.indexOf(current) + 1) % sequence.length];
-
-  if (next === 'vr') {
-    if (!inVR) await enterVR();
-  } else {
-    if (inVR) exitVR();
-    controls.setMode(next);
-  }
-}
-document.getElementById('toggle-mode').addEventListener('click', () => cycleViewMode());
-
-vrBtn.addEventListener('click', () => {
-  if (vrBtn.disabled) return;
-  // Start z ekranu startowego: bezpieczny start pozycji w VR — na samym
-  // środku głównej sali, z uwzględnieniem kolizji.
-  enterVR(new THREE.Vector3(loungeX, 0, 0));
-});
-
-document.getElementById('exit-btn').addEventListener('click', () => exitToIntro());
-
-// Wyjście z metaversu do ekranu startowego pod klawiszem Esc — działa
-// zarówno w trybie FPP/TPP (odblokowuje kursor, chowa HUD), jak i w VR
-// (dodatkowo wyłącza tryb cardboard, tak jak przycisk "Wyjdź z VR").
-function exitToIntro() {
-  const intro = document.getElementById('intro');
-  if (!intro.classList.contains('hidden')) return; // już jesteśmy na starcie
-
-  if (inVR) exitVR();
-  document.getElementById('exit-btn').classList.add('hidden');
-
-  if (document.pointerLockElement === renderer.domElement) {
-    document.exitPointerLock();
-  }
-
-  document.getElementById('joystick-base').classList.add('hidden');
-  document.getElementById('hud').classList.add('hidden');
-  intro.classList.remove('hidden');
-  renderer.domElement.style.display = 'none';
-}
-
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') exitToIntro();
-});
+  
+  // Przywróć kropkę jeśli wracamy do FPP,
