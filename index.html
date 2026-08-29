@@ -241,14 +241,8 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
-<script>
-function loadGallery() { import('./src/main.js'); }
-if ('requestIdleCallback' in window) {
-    requestIdleCallback(loadGallery, { timeout: 1200 });
-} else {
-    window.addEventListener('load', loadGallery);
-}
-</script>
+<!-- ZMIANA: natychmiastowe ładowanie zamiast opóźnionego requestIdleCallback -->
+<script type="module" src="./src/main.js"></script>
 
 </body>
 </html>
