@@ -34,12 +34,10 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1 : 2));
-// ACESFilmicToneMapping wygląda najlepiej, ale to kilka operacji
-// matematycznych liczonych dla KAŻDEGO piksela KAŻDEGO obiektu — w VR
-// (stereo, podwójne renderowanie) ten koszt się podwaja. Na mobile
-// przechodzimy na dużo tańsze LinearToneMapping (praktycznie tylko
-// mnożenie przez ekspozycję).
-renderer.toneMapping = IS_MOBILE ? THREE.LinearToneMapping : THREE.ACESFilmicToneMapping;
+// Ten sam ACESFilmicToneMapping na Androidzie i na komputerze — wcześniejsza
+// wersja oświetlenia, sprzed przejścia na tańsze (ale ciemniejsze/płaskie)
+// LinearToneMapping na mobile.
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
@@ -170,6 +168,21 @@ const TELEPORT_DWELL = 2.2;
 const cardboard = new CardboardMode(renderer, camera);
 let inVR = false;
 
+// Celownik do teleportacji jest zduplikowany w HTML/CSS (jeden na środku
+// lewego, drugi na środku prawego pola widzenia) — w VR ekran jest
+// podzielony na dwie połówki (lewe/prawe oko), więc pojedynczy celownik
+// na samym środku ekranu wypadał na granicy obu połówek, niewidoczny
+// w żadnym z oczu naraz. Te dwie pomocnicze funkcje sterują OBOMA
+// kopiami naraz, żeby reszta kodu nie musiała znać szczegółów duplikacji.
+const reticleRings = document.querySelectorAll('.reticle-ring');
+const reticleFills = document.querySelectorAll('.reticle-fill');
+function setReticleDisplay(display) {
+  reticleRings.forEach(r => { r.style.display = display; });
+}
+function setReticleFillHeight(pct) {
+  reticleFills.forEach(f => { f.style.height = pct; });
+}
+
 const isMobileDevice = IS_MOBILE;
 const vrBtn = document.getElementById('start-vr');
 if (!isMobileDevice) {
@@ -190,14 +203,13 @@ function updateGazeTeleport(dt) {
   const origin = _gazeOrigin;
   camera.getWorldDirection(dir);
   camera.getWorldPosition(origin);
-  const fill = document.getElementById('reticle-fill');
 
   if (dir.y < -0.15) {
     raycaster.set(origin, dir);
     const hits = raycaster.intersectObject(floorMesh);
     if (hits.length) {
       dwell += dt;
-      fill.style.height = Math.min(100, (dwell / TELEPORT_DWELL) * 100) + '%';
+      setReticleFillHeight(Math.min(100, (dwell / TELEPORT_DWELL) * 100) + '%');
       if (dwell >= TELEPORT_DWELL) {
         const targetPoint = hits[0].point.clone();
         
@@ -216,13 +228,13 @@ function updateGazeTeleport(dt) {
         }
 
         dwell = 0;
-        fill.style.height = '0%';
+        setReticleFillHeight('0%');
       }
       return;
     }
   }
   dwell = 0;
-  fill.style.height = '0%';
+  setReticleFillHeight('0%');
 }
 
 const _captionDir = new THREE.Vector3();
@@ -305,19 +317,18 @@ function animate() {
     resolveCollision(rig.position, 0.55, 1.0);
 
     const gp = getActiveGamepad();
-    const reticle = document.getElementById('reticle-ring');
     const collisionFn = (pos, r) => resolveCollision(pos, Math.max(r, 0.55), 1.0);
     if (gp) {
       applyGamepadMovement(gp, camera, rig, dt, 2.4, collisionFn);
       dwell = 0;
-      document.getElementById('reticle-fill').style.height = '0%';
-      reticle.style.display = 'none';
+      setReticleFillHeight('0%');
+      setReticleDisplay('none');
     } else if (applyKeyboardMovementVR(dt, 2.4, collisionFn)) {
       dwell = 0;
-      document.getElementById('reticle-fill').style.height = '0%';
-      reticle.style.display = 'none';
+      setReticleFillHeight('0%');
+      setReticleDisplay('none');
     } else {
-      reticle.style.display = 'block';
+      setReticleDisplay('block');
       updateGazeTeleport(dt);
     }
     cardboard.render(scene);
@@ -362,17 +373,18 @@ function startExperience(mode) {
 
 document.getElementById('start-fpp').addEventListener('click', () => startExperience('fpp'));
 document.getElementById('start-tpp').addEventListener('click', () => startExperience('tpp'));
-document.getElementById('toggle-mode').addEventListener('click', () => controls.toggleMode());
 
 if (isMobileDevice) initMobileControls(controls);
 
-vrBtn.addEventListener('click', async () => {
-  if (vrBtn.disabled) return;
-
+// Włącza tryb VR (cardboard). `startPos` to opcjonalny THREE.Vector3 —
+// gdy podany, gracz startuje w VR z tej pozycji (np. środek sali, przy
+// starcie z ekranu startowego); gdy pominięty, VR startuje z AKTUALNEJ
+// pozycji gracza (this kontynuacja sesji przy przełączaniu widoku
+// FPP/TPP -> VR w locie, bez teleportowania go gdzie indziej).
+async function enterVR(startPos) {
   renderer.domElement.style.display = 'block';
 
-  // Bezpieczny start pozycji w VR - na samym środku głównej sali z uwzględnieniem kolizji
-  const vrStart = new THREE.Vector3(loungeX, 0, 0);
+  const vrStart = startPos ? startPos.clone() : new THREE.Vector3(controls.player.x, 0, controls.player.z);
   resolveCollision(vrStart, 0.55, 1.0);
   rig.position.copy(vrStart);
   rig.position.y = 0;
@@ -381,14 +393,59 @@ vrBtn.addEventListener('click', async () => {
   camera.near = 0.15;
   cardboard.updateAspect();
 
+  // Awatar TPP nie ma czego robić w widoku z pierwszej osoby, jakim
+  // efektywnie jest VR — bez tego, przy przełączeniu TPP -> VR, gracz
+  // widziałby własne ciało "nałożone" na kamerę.
+  controls.avatar.visible = false;
+
   await cardboard.enable();
   inVR = true;
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  document.getElementById('reticle-ring').style.display = 'block';
+  setReticleDisplay('block');
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź z VR';
   exitBtn.classList.remove('hidden');
+}
+
+// Wyłącza tryb VR, ale NIE wraca do ekranu startowego — używane zarówno
+// przy przełączaniu widoku VR -> FPP/TPP w locie, jak i (jako pierwszy
+// krok) przy pełnym wyjściu z metaversu w exitToIntro().
+function exitVR() {
+  cardboard.disable();
+  inVR = false;
+  controls.player.set(rig.position.x, 0, rig.position.z);
+  rig.position.set(0, 0, 0);
+  camera.rotation.set(0, 0, 0);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  setReticleDisplay('none');
+  document.getElementById('exit-btn').textContent = '✕ Wyjdź';
+}
+
+// Przycisk "Zmień widok" w HUD-zie: na komputerze przełącza tylko
+// pierwsza/trzecia osoba (VR niedostępne bez gogli), na Androidzie
+// cyklicznie przechodzi przez WSZYSTKIE trzy widoki: pierwsza osoba ->
+// trzecia osoba -> VR -> pierwsza osoba...
+async function cycleViewMode() {
+  const sequence = isMobileDevice ? ['fpp', 'tpp', 'vr'] : ['fpp', 'tpp'];
+  const current = inVR ? 'vr' : controls.mode;
+  const next = sequence[(sequence.indexOf(current) + 1) % sequence.length];
+
+  if (next === 'vr') {
+    if (!inVR) await enterVR();
+  } else {
+    if (inVR) exitVR();
+    controls.setMode(next);
+  }
+}
+document.getElementById('toggle-mode').addEventListener('click', () => cycleViewMode());
+
+vrBtn.addEventListener('click', () => {
+  if (vrBtn.disabled) return;
+  // Start z ekranu startowego: bezpieczny start pozycji w VR — na samym
+  // środku głównej sali, z uwzględnieniem kolizji.
+  enterVR(new THREE.Vector3(loungeX, 0, 0));
 });
 
 document.getElementById('exit-btn').addEventListener('click', () => exitToIntro());
@@ -400,16 +457,7 @@ function exitToIntro() {
   const intro = document.getElementById('intro');
   if (!intro.classList.contains('hidden')) return; // już jesteśmy na starcie
 
-  if (inVR) {
-    cardboard.disable();
-    inVR = false;
-    controls.player.set(rig.position.x, 0, rig.position.z);
-    rig.position.set(0, 0, 0);
-    camera.rotation.set(0, 0, 0);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    document.getElementById('reticle-ring').style.display = 'none';
-  }
+  if (inVR) exitVR();
   document.getElementById('exit-btn').classList.add('hidden');
 
   if (document.pointerLockElement === renderer.domElement) {
