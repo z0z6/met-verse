@@ -60,6 +60,7 @@ export function init(containerId = "canvas-container", options = {}) {
 
     mountEl.style.position = 'relative';
 
+    // Tworzenie warstwy tapety
     wallpaperLayer = document.createElement('div');
     wallpaperLayer.id = 'wallpaper-layer';
     wallpaperLayer.style.cssText = `position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 0; transition: opacity 0.4s ease;`;
@@ -87,6 +88,7 @@ export function init(containerId = "canvas-container", options = {}) {
     modelGroup = new THREE.Group();
     rig.add(modelGroup);
 
+    // Ładowanie modelu
     new GLTFLoader().load(MODEL_URL, (gltf) => {
         const lineMaterial = new THREE.LineBasicMaterial({ color: LINE_COLOR, transparent: LINE_OPACITY < 1, opacity: LINE_OPACITY });
         const mergedPositions = [];
@@ -132,6 +134,7 @@ export function init(containerId = "canvas-container", options = {}) {
     cachedRotationDirection = Config.get(currentPlatform + '_rotation_direction');
     cachedGridEnabled = Config.get('gridEnabled');
 
+    // Zastosuj tapetę - WAŻNE: wywołaj po inicjalizacji
     applyWallpaper();
     startLoop();
 }
@@ -173,7 +176,6 @@ function applyTilt() {
 
 function applyScale() {
     if (!modelGroup) return;
-    // Użyj rozmiaru gogli dla aktualnej platformy
     const vrSize = Config.get(currentPlatform + '_vr_size') || 1.0;
     modelGroup.scale.setScalar(baseScaleFactor * vrSize);
 }
@@ -183,8 +185,12 @@ function applyWallpaper() {
     const prefix = currentPlatform + '_';
     const enabled = Config.get('wallpaperEnabled');
     const index = Config.get(prefix + 'wallpaper_index');
+    
+    console.log(`[VR-Headset] Applying wallpaper for ${currentPlatform}: enabled=${enabled}, index=${index}`);
+    
     if (enabled) {
-        wallpaperLayer.style.backgroundImage = `url('${WALLPAPERS[index] || WALLPAPERS[0]}')`;
+        const path = WALLPAPERS[index] || WALLPAPERS[0];
+        wallpaperLayer.style.backgroundImage = `url('${path}')`;
         wallpaperLayer.style.opacity = '1';
         wallpaperLayer.style.filter = `brightness(${Config.get(prefix + 'wallpaper_brightness')}) blur(${Config.get(prefix + 'wallpaper_blur')}px)`;
     } else {
@@ -206,7 +212,6 @@ function onConfigChange(e) {
         updateGogglePosition();
     }
     
-    // Aktualizacja rozmiaru gogli
     if (key === currentPlatform + '_vr_size') {
         applyScale();
     }
