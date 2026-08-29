@@ -15,29 +15,13 @@
 }
 </script>
 <style>
-  /* Tło pod spodem (gogle VR / cząsteczki) */
   #canvas-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
-    pointer-events: none;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none;
   }
-  /* UWAGA: #intro NIE jest tu definiowane — cała jego stylistyka (łącznie
-     z zachowaniem na telefonie: pozycja panelu, odstępy) żyje wyłącznie
-     w style.css. Duplikat tej reguły w tym miejscu wcześniej istniał
-     i przez kolejność w kaskadzie CSS (ta sama specyficzność, ale
-     zadeklarowany PO <link rel="stylesheet">) całkowicie nadpisywał
-     regułę mobilną z style.css (align-items: flex-end) z powrotem na
-     align-items: center — dlatego zmiana pozycji panelu na telefonie
-     nigdy nie była widoczna, mimo poprawnego kodu w style.css. -->
 </style>
 </head>
 <body>
 
-<!-- Kontener na tło 3D -->
 <div id="canvas-container"></div>
 
 <div id="intro">
@@ -58,7 +42,7 @@
         <span>VR</span>
       </button>
     </div>
-    <p class="hint">W A S D — ruch &nbsp;|&nbsp; mysz — rozglądanie (kliknij ekran, by zablokować kursor) &nbsp;|&nbsp; SHIFT — bieg</p>
+    <p class="hint">W A S D — ruch  |  mysz — rozglądanie (kliknij ekran, by zablokować kursor)  |  SHIFT — bieg</p>
   </div>
 </div>
 
@@ -66,24 +50,15 @@
   <button id="toggle-mode" class="hud-btn">🔄 Zmień widok</button>
   <button id="exit-btn" class="hud-btn hidden" style="right:auto;left:16px;">✕ Wyjdź</button>
   <div id="crosshair"></div>
-  <div id="joystick-base" class="hidden">
-    <div id="joystick-knob"></div>
-  </div>
+  <div id="joystick-base" class="hidden"><div id="joystick-knob"></div></div>
   <div class="reticle-ring reticle-ring-left"><div class="reticle-fill"></div><div class="reticle-dot"></div></div>
   <div class="reticle-ring reticle-ring-right"><div class="reticle-fill"></div><div class="reticle-dot"></div></div>
   <div id="artwork-caption" class="hidden"></div>
 </div>
 
-<!-- Inicjalizacja tła: gogle VR (zawsze) + opcjonalna tapeta pod spodem -->
 <script type="module">
 import { Config } from './js/config.js';
-// UWAGA: "?v=2" na końcu ścieżki to celowy cache-bust — GitHub Pages
-// (CDN Fastly) cache'uje pliki JS niezależnie od cache przeglądarki,
-// więc samo wyczyszczenie cache/incognito na telefonie NIE gwarantuje
-// świeżej wersji. Przy każdej kolejnej zmianie w js/vr-headset-bg.js
-// podbij ten numer (v=3, v=4...), żeby wymusić natychmiastowe pobranie
-// nowej wersji zamiast czekać, aż CDN sam wygasi stary cache.
-import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=9';
+import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=10';
 
 async function loadConfigAndInit() {
   try {
@@ -106,13 +81,6 @@ async function loadConfigAndInit() {
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
-<!-- Główna logika metaversum — importowana z niskim priorytetem (dopiero
-     gdy przeglądarka jest bezczynna, najpóźniej po 1,2s), żeby pobieranie
-     tekstur pomieszczeń i 24 obrazów z galerii nie konkurowało o pasmo
-     i CPU z tym, co faktycznie trzeba pokazać jak najszybciej: ekranem
-     startowym (config.json, tapeta, model gogli VR w tle). Przyciski
-     i tak zdążą się "uzbroić" w main.js, zanim ktokolwiek fizycznie
-     kliknie — a strona startowa renderuje się zauważalnie szybciej. -->
 <script>
   function loadGallery() { import('./src/main.js'); }
   if ('requestIdleCallback' in window) {
