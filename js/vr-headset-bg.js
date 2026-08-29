@@ -83,12 +83,12 @@ export function init(containerId = "canvas-container", options = {}) {
 
     rig = new THREE.Group();
     scene.add(rig);
-    applyTilt();
-    updateGogglePosition(); // Ustawienie początkowe na podstawie configu
-
+    
+    // Model group - dodawany od razu
     modelGroup = new THREE.Group();
     rig.add(modelGroup);
 
+    // Ładowanie modelu
     new GLTFLoader().load(MODEL_URL, (gltf) => {
         const lineMaterial = new THREE.LineBasicMaterial({ color: LINE_COLOR, transparent: LINE_OPACITY < 1, opacity: LINE_OPACITY });
         const mergedPositions = [];
@@ -122,6 +122,10 @@ export function init(containerId = "canvas-container", options = {}) {
         lineSegments.position.sub(center);
         modelGroup.add(lineSegments);
         applyScale();
+        
+        // PO załadowaniu modelu ustawiamy pozycję i tilt
+        applyTilt();
+        updateGogglePosition();
     }, undefined, (err) => console.error("vr-headset-bg: błąd wczytywania modelu:", err));
 
     window.addEventListener("resize", onResize);
@@ -160,8 +164,8 @@ function buildGrid() {
 
 function applyTilt() {
     if (!rig) return;
-    const tiltDir = Config.get('tiltDirection');
-    const tiltAngle = Config.get('tiltAngle');
+    const tiltDir = Config.get(currentPlatform + '_tilt_direction') || 'front-right';
+    const tiltAngle = Config.get(currentPlatform + '_tilt_angle') || 15;
     const angle = THREE.MathUtils.degToRad(tiltAngle);
     rig.rotation.x = 0; rig.rotation.z = 0;
     if (tiltDir === 'front-right') rig.rotation.z = -angle;
@@ -178,7 +182,7 @@ function applyScale() {
 function applyWallpaper() {
     if (!wallpaperLayer) return;
     const prefix = currentPlatform + '_';
-    const enabled = Config.get('wallpaperEnabled'); // Globalne włączenie
+    const enabled = Config.get('wallpaperEnabled');
     const index = Config.get(prefix + 'wallpaper_index');
     if (enabled) {
         wallpaperLayer.style.backgroundImage = `url('${WALLPAPERS[index] || WALLPAPERS[0]}')`;
@@ -193,7 +197,6 @@ function applyWallpaper() {
 function onConfigChange(e) {
     const { key, value } = e.detail;
     if (key === 'bgColor') document.body.style.background = Config.get('bgColor');
-    if (key === 'tiltDirection' || key === 'tiltAngle') applyTilt();
     if (key === 'scale') applyScale();
     if (key === 'gridEnabled' && gridMesh) { gridMesh.visible = value; cachedGridEnabled = value; }
     
@@ -202,6 +205,10 @@ function onConfigChange(e) {
     
     if (key === currentPlatform + '_vr_x' || key === currentPlatform + '_vr_y') {
         updateGogglePosition();
+    }
+    
+    if (key === currentPlatform + '_tilt_direction' || key === currentPlatform + '_tilt_angle') {
+        applyTilt();
     }
 
     if (gridMaterial) {
@@ -258,6 +265,7 @@ export function setPreviewPlatform(platform) {
     currentPlatform = platform;
     cachedRotationSpeed = Config.get(currentPlatform + '_rotation_speed');
     cachedRotationDirection = Config.get(currentPlatform + '_rotation_direction');
+    applyTilt();
     updateGogglePosition();
     applyWallpaper();
 }
