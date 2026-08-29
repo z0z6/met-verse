@@ -5,16 +5,20 @@ import { applyPanelToElement } from './panelConfig.js';
 const $ = id => document.getElementById(id);
 
 const ADMIN_KEYS = [
-    'desktop_vr_x', 'desktop_vr_y', 'desktop_panel_x', 'desktop_panel_y',
-    'desktop_panel_size', 'desktop_panel_opacity', 'desktop_panel_title',
-    'desktop_panel_content_desc', 'desktop_panel_btn_desc', 'desktop_wallpaper_index',
-    'desktop_wallpaper_brightness', 'desktop_wallpaper_blur', 'desktop_rotation_direction',
-    'desktop_rotation_speed', 'desktop_tilt_direction', 'desktop_tilt_angle',
-    'android_vr_x', 'android_vr_y', 'android_panel_x', 'android_panel_y',
-    'android_panel_size', 'android_panel_opacity', 'android_panel_title',
-    'android_panel_content_desc', 'android_panel_btn_desc', 'android_wallpaper_index',
-    'android_wallpaper_brightness', 'android_wallpaper_blur', 'android_rotation_direction',
-    'android_rotation_speed', 'android_tilt_direction', 'android_tilt_angle',
+    'desktop_vr_x', 'desktop_vr_y', 'desktop_vr_size',
+    'desktop_panel_x', 'desktop_panel_y',
+    'desktop_panel_size', 'desktop_panel_opacity',
+    'desktop_panel_title', 'desktop_panel_content_desc', 'desktop_panel_btn_desc',
+    'desktop_wallpaper_index', 'desktop_wallpaper_brightness', 'desktop_wallpaper_blur',
+    'desktop_rotation_direction', 'desktop_rotation_speed',
+    'desktop_tilt_direction', 'desktop_tilt_angle',
+    'android_vr_x', 'android_vr_y', 'android_vr_size',
+    'android_panel_x', 'android_panel_y',
+    'android_panel_size', 'android_panel_opacity',
+    'android_panel_title', 'android_panel_content_desc', 'android_panel_btn_desc',
+    'android_wallpaper_index', 'android_wallpaper_brightness', 'android_wallpaper_blur',
+    'android_rotation_direction', 'android_rotation_speed',
+    'android_tilt_direction', 'android_tilt_angle',
     'wallpaperEnabled', 'bgColor'
 ];
 
