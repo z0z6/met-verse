@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <script>
         if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 900)) {
-            document.body.innerHTML = '<div style="color:white; text-align:center; padding:50px; font-family:sans-serif; background:#111; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center;"><h1> Dostęp zablokowany</h1><p>Panel administracyjny jest dostępny tylko z poziomu komputera.</p></div>';
+            document.body.innerHTML = '<div style="color:white; text-align:center; padding:50px; font-family:sans-serif; background:#111; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center;"><h1>🚫 Dostęp zablokowany</h1><p>Panel administracyjny jest dostępny tylko z poziomu komputera.</p></div>';
             throw new Error('Mobile access blocked');
         }
     </script>
@@ -20,20 +20,52 @@
         
         .preview-mock-panel {
             position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 16px;
+            border-radius: 20px;
             padding: 32px;
             text-align: center;
             color: white;
             pointer-events: none;
             z-index: 5;
             min-width: 280px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
-        .preview-mock-panel h1 { margin: 0 0 8px 0; font-size: 1.8rem; letter-spacing: 2px; }
+        .preview-mock-panel h1 { 
+            margin: 0 0 8px 0; 
+            font-size: 1.8rem; 
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         .preview-mock-panel p { margin: 0 0 16px 0; color: #aaa; font-size: 0.9rem; }
-        .preview-mock-panel .hint { font-size: 0.75rem; color: #666; margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; }
+        .preview-mock-panel .hint { 
+            font-size: 0.75rem; 
+            color: #666; 
+            margin-top: 16px; 
+            border-top: 1px solid rgba(255,255,255,0.1); 
+            padding-top: 12px; 
+        }
+        .preview-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+        .mode-btn-preview {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px 16px;
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 500;
+            pointer-events: none;
+        }
 
         .control-group { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .section-title { font-size: 16px; font-weight: 700; color: #0a84ff; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
@@ -54,6 +86,34 @@
         .btn-export { background: #0a84ff; }
         .btn-import { background: rgba(255,255,255,0.1); }
         .btn-return { background: #34c759; margin-top: 16px; }
+        
+        .preview-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+        .preview-toggle button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .preview-toggle button.active { background: #0a84ff; border-color: #0a84ff; }
+        .preview-toggle button:hover:not(.active) { background: rgba(255,255,255,0.1); }
+
+        #phone-frame {
+            width: 375px;
+            height: 812px;
+            border: 14px solid #2a2a2a;
+            border-radius: 45px;
+            position: relative;
+            background: transparent;
+            box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        #phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 28px;
+            background: #2a2a2a;
+            border-radius: 0 0 18px 18px;
+            z-index: 10;
+        }
     </style>
     <script type="importmap">
     {
@@ -68,6 +128,11 @@
     <div class="admin-layout">
         <aside class="admin-sidebar">
             <div class="section-title" style="font-size: 20px; color: #fff; margin-bottom: 24px;">️ Panel Administracyjny</div>
+
+            <div class="preview-toggle">
+                <button id="btnPreviewDesktop" class="active">💻 Podgląd Desktop</button>
+                <button id="btnPreviewAndroid">📱 Podgląd Android</button>
+            </div>
 
             <!-- SEKCJA KOMPUTER -->
             <div class="section-title">💻 Wersja Komputerowa</div>
@@ -158,16 +223,41 @@
 
         <main class="admin-preview">
             <div id="canvas-container"></div>
-            <div id="mock-panel" class="preview-mock-panel">
-                <h1>IMAGINARIUM</h1>
-                <p>wirtualna przestrzeń wystawowa</p>
-                <p class="hint">W A S D — ruch | mysz — rozglądanie | SHIFT — bieg</p>
+            
+            <!-- Podgląd Desktop (pełnoekranowy) -->
+            <div id="desktop-preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                <div id="mock-panel-desktop" class="preview-mock-panel">
+                    <h1>IMAGINARIUM</h1>
+                    <p>wirtualna przestrzeń wystawowa</p>
+                    <div class="preview-buttons">
+                        <button class="mode-btn-preview">Pierwsza osoba</button>
+                        <button class="mode-btn-preview">Trzecia osoba</button>
+                        <button class="mode-btn-preview">VR</button>
+                    </div>
+                    <p class="hint">W A S D — ruch | mysz — rozglądanie | SHIFT — bieg</p>
+                </div>
+            </div>
+            
+            <!-- Podgląd Android (ramka telefonu) -->
+            <div id="android-preview" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; pointer-events: none;">
+                <div id="phone-frame">
+                    <div id="mock-panel-android" class="preview-mock-panel" style="min-width: 240px; padding: 24px;">
+                        <h1 style="font-size: 1.4rem;">IMAGINARIUM</h1>
+                        <p style="font-size: 0.8rem;">wirtualna przestrzeń wystawowa</p>
+                        <div class="preview-buttons">
+                            <button class="mode-btn-preview" style="padding: 8px 12px; font-size: 0.7rem;">FPP</button>
+                            <button class="mode-btn-preview" style="padding: 8px 12px; font-size: 0.7rem;">TPP</button>
+                            <button class="mode-btn-preview" style="padding: 8px 12px; font-size: 0.7rem;">VR</button>
+                        </div>
+                        <p class="hint" style="font-size: 0.65rem;">Dotknij, aby wybrać tryb</p>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
     <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/vr-headset-bg.js?v=11"></script>
+    <script type="module" src="js/vr-headset-bg.js?v=12"></script>
     <script type="module" src="js/admin.js"></script>
 </body>
 </html>
