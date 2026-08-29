@@ -168,6 +168,7 @@ function positionIntroPanel() {
 
 async function loadConfigAndInit() {
     try {
+        // Cache-bust: dodaj timestamp, żeby przeglądarka nie cache'owała starego config.json
         const response = await fetch('config.json?t=' + Date.now());
         if (response.ok) {
             const jsonConfig = await response.json();
@@ -184,6 +185,7 @@ async function loadConfigAndInit() {
     document.body.style.background = Config.get('bgColor');
     initVRHeadsetBg('canvas-container', { raiseOnMobile: true });
     
+    // Czekaj aż DOM i model 3D będą gotowe
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             positionIntroPanel();
@@ -191,6 +193,7 @@ async function loadConfigAndInit() {
     });
 }
 
+// Nasłuchuj zmian configu (np. po imporcie JSON)
 window.addEventListener('configchange', (e) => {
     const key = e.detail.key;
     if (key.startsWith('desktop_panel_') || key.startsWith('android_panel_')) {
@@ -198,6 +201,7 @@ window.addEventListener('configchange', (e) => {
     }
 });
 
+// Pozycjonuj panel przy zmianie rozmiaru okna
 window.addEventListener('resize', () => {
     positionIntroPanel();
 });
