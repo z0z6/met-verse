@@ -60,11 +60,31 @@ export function init(containerId = "canvas-container", options = {}) {
 
     mountEl.style.position = 'relative';
 
-    // Tworzenie warstwy tapety
-    wallpaperLayer = document.createElement('div');
-    wallpaperLayer.id = 'wallpaper-layer';
-    wallpaperLayer.style.cssText = `position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 0; transition: opacity 0.4s ease;`;
-    mountEl.appendChild(wallpaperLayer);
+    // Użyj istniejącej warstwy tapety wstawionej przez inline script w HTML,
+    // lub stwórz nową, jeśli nie istnieje (fallback)
+    wallpaperLayer = document.getElementById('wallpaper-layer');
+    if (!wallpaperLayer || wallpaperLayer.parentNode !== mountEl) {
+        // Fallback: jeśli inline script nie wstawił warstwy, tworzymy ją
+        if (wallpaperLayer && wallpaperLayer.parentNode) {
+            wallpaperLayer.parentNode.removeChild(wallpaperLayer);
+        }
+        wallpaperLayer = document.createElement('div');
+        wallpaperLayer.id = 'wallpaper-layer';
+        wallpaperLayer.style.cssText = `position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 0; transition: opacity 0.4s ease;`;
+        mountEl.appendChild(wallpaperLayer);
+    } else {
+        // Warstwa z inline script — upewnij się, że ma właściwe style i transition
+        wallpaperLayer.style.position = 'absolute';
+        wallpaperLayer.style.top = '0';
+        wallpaperLayer.style.left = '0';
+        wallpaperLayer.style.width = '100%';
+        wallpaperLayer.style.height = '100%';
+        wallpaperLayer.style.backgroundSize = 'cover';
+        wallpaperLayer.style.backgroundPosition = 'center';
+        wallpaperLayer.style.backgroundRepeat = 'no-repeat';
+        wallpaperLayer.style.zIndex = '0';
+        wallpaperLayer.style.transition = 'opacity 0.4s ease';
+    }
 
     scene = new THREE.Scene();
     scene.background = null;
