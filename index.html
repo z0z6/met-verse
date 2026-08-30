@@ -3,6 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- CRITICAL: natychmiastowe tło i tapeta — blokujemy biały ekran FOUC -->
+    <script>
+    (function() {
+        var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+            || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+        // android_wallpaper_index: 0 → wallpaper1.jpg, desktop_wallpaper_index: 2 → wallpaper3.jpg
+        var wpPath = isMobile ? './wallpapers/wallpaper1.jpg' : './wallpapers/wallpaper3.jpg';
+        var el = document.createElement('style');
+        el.textContent = 
+            'body{background:#d6d6d6;margin:0;overflow:hidden}' +
+            '#canvas-container{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0}' +
+            '#wallpaper-layer{position:absolute;top:0;left:0;width:100%;height:100%;background:url(' + wpPath + ') center/cover no-repeat;z-index:0}';
+        document.head.appendChild(el);
+    })();
+    </script>
+    
     <title>Galeria — Metavers</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -15,6 +32,11 @@
     }
     </script>
     <style>
+        body {
+            background: #d6d6d6;
+            margin: 0;
+            overflow: hidden;
+        }
         #canvas-container {
             position: fixed;
             top: 0;
@@ -151,7 +173,9 @@
 </head>
 <body>
 
-<div id="canvas-container"></div>
+<div id="canvas-container">
+    <div id="wallpaper-layer"></div>
+</div>
 
 <div id="intro">
     <div class="intro-panel">
