@@ -44,17 +44,17 @@ export class GalleryControls {
     // żeby zawsze zachodziły na siebie i nigdzie nie zostawała przerwa.
     const spanOf = (length, radius) => length + 2 * radius;
 
-    // ---------- Nogi: kostka → łydka → kolano → udo → biodro ----------
+    // ---------- Nogi: wydłużone dla naturalnych proporcji ----------
     const footH = 0.06;
-    const shinLen = 0.20, shinRad = 0.055;
-    const thighLen = 0.21, thighRad = 0.07;
+    const shinLen = 0.26, shinRad = 0.055;   // łydka wydłużona (było 0.20)
+    const thighLen = 0.28, thighRad = 0.07;  // udo wydłużone (było 0.21)
     const ankleY = footH - 0.01; // lekka zakładka ze stopą
     const kneeY  = ankleY + spanOf(shinLen, shinRad);
     const hipY   = kneeY + spanOf(thighLen, thighRad);
 
-    // ---------- Tors: biodro → talia → klatka piersiowa ----------
-    const waistLen = 0.08, waistRad = 0.115;
-    const chestLen = 0.17, chestRad = 0.145;
+    // ---------- Tors: skompaktowany dla lepszych proporcji ----------
+    const waistLen = 0.06, waistRad = 0.115; // talia/brzuch skrócony (było 0.08)
+    const chestLen = 0.18, chestRad = 0.145; // klatka piersiowa (było 0.17)
     const waistY   = hipY + spanOf(waistLen, waistRad) / 2 - 0.028;
     const waistTop = waistY + spanOf(waistLen, waistRad) / 2;
     const chestY   = waistTop + spanOf(chestLen, chestRad) / 2 - 0.03;
@@ -107,7 +107,7 @@ export class GalleryControls {
       const shoulderJoint = new THREE.Mesh(new THREE.SphereGeometry(0.058, 14, 12), BODY);
       armPivot.add(shoulderJoint);
 
-      const upperArmLen = 0.16, upperArmRad = 0.048;
+      const upperArmLen = 0.18, upperArmRad = 0.048; // lekko wydłużone (było 0.16)
       const upperArm = segment(upperArmLen, upperArmRad, BODY);
       upperArm.rotation.z = side * 0.09;
       armPivot.add(upperArm);
@@ -117,7 +117,7 @@ export class GalleryControls {
       elbowJoint.position.y = elbowY;
       armPivot.add(elbowJoint);
 
-      const forearmLen = 0.15, forearmRad = 0.04;
+      const forearmLen = 0.17, forearmRad = 0.04; // lekko wydłużone (było 0.15)
       const forearm = segment(forearmLen, forearmRad, BODY);
       forearm.position.y = elbowY;
       forearm.rotation.z = side * 0.05;
@@ -186,9 +186,6 @@ export class GalleryControls {
     });
   }
 
-  // Rozglądanie się przez dotyk (mobile) — ta sama formuła co w mousemove,
-  // ale wywoływana bezpośrednio, niezależnie od blokady kursora (Pointer Lock
-  // i tak nie ma sensu/nie działa tak samo na dotykowych przeglądarkach).
   applyLookDelta(dx, dy) {
     this.yaw -= dx * 0.0035;
     this.pitch -= dy * 0.0035;
@@ -205,8 +202,6 @@ export class GalleryControls {
   }
 
   update(dt) {
-    // Kierunek "przód" = tam, gdzie faktycznie patrzy kamera (domyślnie -Z w three.js).
-    // Poprzednio wektor miał odwrócony znak, przez co W/S i kamera TPP działały na odwrót.
     const dir = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
 
@@ -259,9 +254,6 @@ export class GalleryControls {
       const cz = this.player.z + Math.cos(this.yaw) * Math.cos(this.pitch) * dist;
       let cy = 1.2 + Math.sin(this.pitch) * dist + 1.4;
 
-      // Kamera TPP nie może wylecieć poza bryłę pomieszczeń: ograniczamy
-      // ją do wnętrza ścian (tak jak gracza) oraz do przedziału podłoga–sufit,
-      // żeby patrzenie w górę/dół nie wypychało jej ponad dach ani pod podłogę.
       const camXZ = new THREE.Vector3(cx, 0, cz);
       resolveCollision(camXZ, 0.3, 0.3);
       cy = Math.max(0.35, Math.min(ROOM_HEIGHT - 0.35, cy));
