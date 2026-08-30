@@ -9,7 +9,7 @@
     (function() {
         var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
             || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
-        // android_wallpaper_index: 0 → wallpaper1.jpg, desktop_wallpaper_index: 2 → wallpaper3.jpg
+        // Zgodnie z config.json: android_wallpaper_index: 0 -> wallpaper1.jpg, desktop_wallpaper_index: 2 -> wallpaper3.jpg
         var wpPath = isMobile ? './wallpapers/wallpaper1.jpg' : './wallpapers/wallpaper3.jpg';
         var el = document.createElement('style');
         el.textContent = 
@@ -23,6 +23,7 @@
     <title>Galeria — Metavers</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    
     <script type="importmap">
     {
         "imports": {
@@ -31,21 +32,12 @@
         }
     }
     </script>
+    
     <style>
-        body {
-            background: #d6d6d6;
-            margin: 0;
-            overflow: hidden;
-        }
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 0;
-            pointer-events: none;
-        }
+        /* Zapasowe style, aby panel wyglądał dobrze zanim załaduje się style.css */
+        body { background: #d6d6d6; margin: 0; overflow: hidden; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+        
         .intro-panel {
             position: fixed;
             top: 50%;
@@ -73,19 +65,8 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        .intro-panel > p {
-            font-size: 1.1rem;
-            color: #aaa;
-            margin-bottom: 24px;
-            font-weight: 300;
-        }
-        .intro-row {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
-        }
+        .intro-panel > p { font-size: 1.1rem; color: #aaa; margin-bottom: 24px; font-weight: 300; }
+        .intro-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
         .mode-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -108,19 +89,8 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
-        .mode-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .mode-btn.long-label {
-            min-width: 200px;
-            font-size: 0.85rem;
-        }
-        .mode-btn .icon {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-        }
+        .mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .mode-btn .icon { width: 24px; height: 24px; flex-shrink: 0; }
         .hint {
             font-size: 0.85rem;
             color: #666;
@@ -129,50 +99,21 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             line-height: 1.6;
         }
-        #intro {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 10;
-            pointer-events: none;
-        }
+        #intro { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
 
-        /* Style mobilne — spójne z mockiem Android w adminie */
         @media (max-width: 768px) and (pointer: coarse) {
-            .intro-panel {
-                max-width: 95vw;
-                width: 90vw;
-                padding: 32px 24px;
-            }
-            .intro-panel h1 {
-                font-size: 2rem;
-                letter-spacing: 2px;
-            }
-            .intro-panel > p {
-                font-size: 0.95rem;
-                margin-bottom: 20px;
-            }
-            .intro-row {
-                flex-direction: column;
-                gap: 12px;
-            }
-            .mode-btn {
-                min-width: 100%;
-                padding: 14px 20px;
-                font-size: 0.9rem;
-            }
-            .hint {
-                font-size: 0.75rem;
-                margin-top: 16px;
-                padding-top: 12px;
-            }
+            .intro-panel { max-width: 95vw; width: 90vw; padding: 32px 24px; }
+            .intro-panel h1 { font-size: 2rem; letter-spacing: 2px; }
+            .intro-panel > p { font-size: 0.95rem; margin-bottom: 20px; }
+            .intro-row { flex-direction: column; gap: 12px; }
+            .mode-btn { min-width: 100%; padding: 14px 20px; font-size: 0.9rem; }
+            .hint { font-size: 0.75rem; margin-top: 16px; padding-top: 12px; }
         }
     </style>
 </head>
 <body>
 
+<!-- Kontener na tło 3D z natychmiastową warstwą tapety -->
 <div id="canvas-container">
     <div id="wallpaper-layer"></div>
 </div>
@@ -201,7 +142,7 @@
 
 <div id="hud" class="hidden">
     <button id="toggle-mode" class="hud-btn">🔄 Zmień widok</button>
-    <button id="exit-btn" class="hud-btn hidden" style="right:auto;left:16px;"> Wyjdź</button>
+    <button id="exit-btn" class="hud-btn hidden" style="right:auto;left:16px;">✕ Wyjdź</button>
     <div id="crosshair"></div>
     <div id="joystick-base" class="hidden">
         <div id="joystick-knob"></div>
@@ -213,7 +154,8 @@
 
 <script type="module">
 import { Config } from './js/config.js';
-import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=13';
+// UWAGA: "?v=14" to cache-bust wymuszający pobranie świeżej wersji skryptu z GitHub Pages CDN
+import { init as initVRHeadsetBg } from './js/vr-headset-bg.js?v=14';
 import { applyPanelToElement } from './js/panelConfig.js';
 
 function isMobilePlatform() {
@@ -231,6 +173,7 @@ function positionIntroPanel() {
 
 async function loadConfigAndInit() {
     try {
+        // Dodajemy timestamp, aby uniknąć cache'owania config.json przy każdej zmianie
         const response = await fetch('config.json?t=' + Date.now());
         if (response.ok) {
             const jsonConfig = await response.json();
@@ -242,13 +185,16 @@ async function loadConfigAndInit() {
         console.warn('Nie udało się załadować config.json, używam ustawień domyślnych.', e);
     }
 
+    // Ustawienie koloru tła z configu
     document.body.style.background = Config.get('bgColor');
 
+    // Inicjalizacja tła 3D (gogle VR)
     initVRHeadsetBg('canvas-container', {
         raiseOnMobile: true,
         forcePlatform: isMobilePlatform() ? 'android' : 'desktop'
     });
 
+    // Pozycjonowanie panelu po załadowaniu konfiguracji
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             positionIntroPanel();
@@ -270,7 +216,17 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', loadConfigAndInit);
 </script>
 
-<script type="module" src="./src/main.js"></script>
+<!-- Główna logika metaversum ładowana z niskim priorytetem, aby nie blokować ekranu startowego -->
+<script>
+function loadGallery() { 
+    import('./src/main.js'); 
+}
+if ('requestIdleCallback' in window) {
+    requestIdleCallback(loadGallery, { timeout: 1200 });
+} else {
+    window.addEventListener('load', loadGallery);
+}
+</script>
 
 </body>
 </html>
