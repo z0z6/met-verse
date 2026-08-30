@@ -26,7 +26,7 @@ export function applyPanelToElement(element, prefix, containerEl = null) {
         element.style.position = 'fixed';
     }
 
-    // Tymczasowo bez scale, żeby zmierzyć bazowy rozmiar
+    // Tymczasowo bez transform, żeby zmierzyć bazowy rozmiar
     const prevTransform = element.style.transform;
     element.style.transform = 'none';
 
@@ -39,16 +39,17 @@ export function applyPanelToElement(element, prefix, containerEl = null) {
     const maxOffsetX = Math.max(0, refW - scaledW);
     const maxOffsetY = Math.max(0, refH - scaledH);
 
-    // X/Y 0–100%: 0 = lewa/góra, 50 = środek, 100 = prawa/dół (w granicach kontenera)
-    const leftPx = (x / 100) * maxOffsetX;
-    const topPx = (y / 100) * maxOffsetY;
+    // X/Y 0–100% w granicach dostępnej przestrzeni
+    // Dodajemy połowę rozmiaru, bo transform: translate(-50%, -50%) centruje element
+    const leftPx = (x / 100) * maxOffsetX + scaledW / 2;
+    const topPx = (y / 100) * maxOffsetY + scaledH / 2;
 
     element.style.left = leftPx + 'px';
     element.style.top = topPx + 'px';
     element.style.right = 'auto';
     element.style.bottom = 'auto';
-    element.style.transform = `scale(${size})`;
-    element.style.transformOrigin = 'top left';
+    element.style.transform = `translate(-50%, -50%) scale(${size})`;
+    element.style.transformOrigin = 'center center';
     element.style.opacity = opacity;
     element.style.filter = `brightness(${brightness})`;
     element.style.webkitFilter = `brightness(${brightness})`;
