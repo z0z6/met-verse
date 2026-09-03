@@ -10,8 +10,8 @@ const ANDROID_MODEL_TARGET_SIZE = 0.95;
 const MODEL_URL = "./models/vr-headset.glb";
 
 const WALLPAPERS = [
-    './wallpapers/wallpaper1.jpg', './wallpapers/wallpaper2.jpg', './wallpapers/wallpaper3.jpg',
-    './wallpapers/wallpaper4.jpg', './wallpapers/wallpaper5.jpg'
+    './wallpapers/wallpaper1.webp', './wallpapers/wallpaper2.webp', './wallpapers/wallpaper3.webp',
+    './wallpapers/wallpaper4.webp', './wallpapers/wallpaper5.webp'
 ];
 
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
