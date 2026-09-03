@@ -349,6 +349,14 @@ function animate() {
       setReticleDisplay('block');
       updateGazeTeleport(dt);
     }
+
+    // OSTATECZNY, BEZWARUNKOWY bezpiecznik — niezależnie od tego, którą
+    // ścieżką (pilot / klawiatura / teleport / żadna) gracz się poruszył
+    // w tej klatce, tuż przed renderem jeszcze raz przyklejamy riga do
+    // wnętrza budynku. Chroni też przed przyszłymi ścieżkami ruchu,
+    // które ktoś kiedyś doda i zapomni podpiąć pod collisionFn.
+    resolveCollision(rig.position, 0.55, 1.0);
+
     cardboard.render(scene);
   } else {
     controls.update(dt);
@@ -419,11 +427,21 @@ async function enterVR(startPos) {
   // widziałby własne ciało "nałożone" na kamerę.
   controls.avatar.visible = false;
 
-  await cardboard.enable();
+  // WAŻNE: przełączamy inVR na true PRZED oczekiwaniem na fullscreen /
+  // blokadę orientacji. cardboard.enable() czeka na prawdziwe, asynchroniczne
+  // operacje przeglądarki (kilka–kilkanaście klatek na Androidzie). Dopóki
+  // inVR jest false, pętla animate() bierze gałąź FPP/TPP, która ustawia
+  // camera.position lokalnie (względem riga) na podstawie controls.player —
+  // a rig.position jest już przesunięty na vrStart. Efekt: przez te klatki
+  // światowa pozycja kamery = rig.position + controls.player (suma dwóch
+  // pozycji), co potrafi wyrzucić kamerę daleko poza budynek, zanim gracz
+  // zdąży się ruszyć. Ustawienie inVR=true tutaj eliminuje ten wyścig.
   inVR = true;
+  updateCrosshairUI();
+
+  await cardboard.enable();
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  updateCrosshairUI();
 
   const exitBtn = document.getElementById('exit-btn');
   exitBtn.textContent = '✕ Wyjdź z VR';
