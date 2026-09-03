@@ -19,7 +19,8 @@ function load(path, colorSpace) {
 }
 
 export function loadFloorMaterial(repeatX, repeatY) {
-  const map = load('textures/floor_color.jpg', THREE.SRGBColorSpace);
+  const map = load('textures/floor_color.webp', THREE.SRGBColorSpace);
+  // normal/roughness zostają w JPG — patrz generate_webp.py (SKIP_LOSSY_KEYWORDS)
   const normalMap = load('textures/floor_normal.jpg');
   const roughnessMap = load('textures/floor_roughness.jpg');
   [map, normalMap, roughnessMap].forEach(t => t.repeat.set(repeatX, repeatY));
@@ -27,20 +28,20 @@ export function loadFloorMaterial(repeatX, repeatY) {
 }
 
 export function loadWallMaterial(repeatX, repeatY) {
-  const map = load('textures/wall_color.jpg', THREE.SRGBColorSpace);
+  const map = load('textures/wall_color.webp', THREE.SRGBColorSpace);
   const normalMap = load('textures/wall_normal.jpg');
   [map, normalMap].forEach(t => t.repeat.set(repeatX, repeatY));
   return new THREE.MeshStandardMaterial({ map, normalMap, roughness: 0.95, metalness: 0.0 });
 }
 
 export function loadCeilingMaterial(repeatX, repeatY) {
-  const map = load('textures/ceiling_color.jpg', THREE.SRGBColorSpace);
+  const map = load('textures/ceiling_color.webp', THREE.SRGBColorSpace);
   map.repeat.set(repeatX, repeatY);
   return new THREE.MeshStandardMaterial({ map, roughness: 1.0 });
 }
 
 export function loadRugMaterial(repeatX, repeatY) {
-  const map = load('textures/rug_color.jpg', THREE.SRGBColorSpace);
+  const map = load('textures/rug_color.webp', THREE.SRGBColorSpace);
   map.repeat.set(repeatX, repeatY);
   return new THREE.MeshStandardMaterial({ map, roughness: 1.0 });
 }
