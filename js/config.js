@@ -13,14 +13,18 @@ const DEFAULTS = {
     scale: 1.1,
     
     // --- KOMPUTER ---
+    // UWAGA: te wartości muszą być identyczne z config.json (patrz też
+    // domyślne top/left/transform/opacity/filter reguły .intro-panel w
+    // index.html) — inaczej wraca widoczny "skok" panelu tuż po wczytaniu
+    // config.json z sieci.
     desktop_vr_x: 50,
-    desktop_vr_y: 50,
-    desktop_vr_size: 1.0,
+    desktop_vr_y: 43,
+    desktop_vr_size: 0.8,
     desktop_panel_x: 50,
-    desktop_panel_y: 50,
-    desktop_panel_size: 1.0,
-    desktop_panel_opacity: 0.9,
-    desktop_panel_brightness: 1.3,
+    desktop_panel_y: 85,
+    desktop_panel_size: 0.7,
+    desktop_panel_opacity: 0.75,
+    desktop_panel_brightness: 1.7,
     desktop_panel_title: 'IMAGINARIUM',
     desktop_panel_content_desc: 'wirtualna przestrzeń wystawowa',
     desktop_panel_btn_desc: 'W A S D — ruch | mysz — rozglądanie | SHIFT — bieg',
@@ -34,18 +38,19 @@ const DEFAULTS = {
     desktop_vr_blocked_label: 'VR dostępne tylko w urządzeniach mobilnych',
 
     // --- ANDROID ---
+    // UWAGA: jak wyżej — trzymaj zgodnie z config.json.
     android_vr_x: 50,
-    android_vr_y: 20,
+    android_vr_y: 40,
     android_vr_size: 0.9,
     android_panel_x: 50,
-    android_panel_y: 90,
-    android_panel_size: 0.9,
+    android_panel_y: 93,
+    android_panel_size: 0.7,
     android_panel_opacity: 0.9,
     android_panel_brightness: 1.3,
     android_panel_title: 'IMAGINARIUM',
     android_panel_content_desc: 'wirtualna przestrzeń wystawowa',
     android_panel_btn_desc: 'Dotknij, aby wybrać tryb',
-    android_wallpaper_index: 2,
+    android_wallpaper_index: 0,
     android_wallpaper_brightness: 1.05,
     android_wallpaper_blur: 0,
     android_rotation_direction: 1,
