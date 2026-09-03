@@ -38,9 +38,22 @@
         
         .intro-panel {
             position: fixed;
-            top: 50%;
+            /* Wartości top/left/transform/opacity/filter poniżej to statyczny
+               odpowiednik tego, co i tak zaraz policzy i ustawi JS
+               (positionIntroPanel() -> applyPanelToElement()) na podstawie
+               config.json. Dzięki temu PIERWSZA klatka strony (zanim
+               jakikolwiek JS zdąży się wykonać) wygląda już tak, jak
+               docelowo — bez efektu "dużego, wyśrodkowanego" panelu, który
+               po chwili się przestawia. Jeśli zmienisz desktop_panel_* w
+               config.json, zaktualizuj też te wartości, żeby nie wróciło
+               widoczne "mrugnięcie". */
+            top: 85%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(0.7);
+            transform-origin: center center;
+            opacity: 0.75;
+            filter: brightness(1.7);
+            -webkit-filter: brightness(1.7);
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -131,7 +144,14 @@
 
         /* MOBILE: pełne teksty, większe przyciski, w tym VR */
         @media (max-width: 768px) and (pointer: coarse) {
-            .intro-panel { 
+            .intro-panel {
+                /* Statyczny odpowiednik android_panel_* z config.json —
+                   ten sam powód co w regule .intro-panel wyżej. */
+                top: 93%;
+                transform: translate(-50%, -50%) scale(0.7);
+                opacity: 0.9;
+                filter: brightness(1.3);
+                -webkit-filter: brightness(1.3);
                 width: 90vw; 
                 max-width: 95vw; 
                 padding: 32px 24px; 
@@ -215,6 +235,13 @@ function positionIntroPanel() {
 }
 
 async function loadConfigAndInit() {
+    // Ustawiamy panel OD RAZU na podstawie wbudowanych wartości domyślnych
+    // (js/config.js), które są identyczne z config.json. Nie czekamy na
+    // fetch() — to on odpowiadał za widoczny "skok" z dużego, wyśrodkowanego
+    // panelu do właściwego wyglądu: zanim odpowiedź z sieci wracała, strona
+    // przez chwilę stała przy ustawieniach startowych.
+    positionIntroPanel();
+
     try {
         const response = await fetch('config.json?t=' + Date.now());
         if (response.ok) {
@@ -234,6 +261,10 @@ async function loadConfigAndInit() {
         forcePlatform: isMobilePlatform() ? 'android' : 'desktop'
     });
 
+    // Ponowne dopasowanie już PO wczytaniu config.json — istotne tylko wtedy,
+    // gdy ktoś zmieni wartości w config.json bez aktualizacji DEFAULTS w
+    // js/config.js (np. przez panel administracyjny). Przy zgodnych
+    // wartościach to wywołanie nic wizualnie nie zmienia.
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             positionIntroPanel();
