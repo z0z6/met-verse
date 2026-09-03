@@ -4,12 +4,21 @@ Wirtualna sala wystawowa w przeglądarce: chodzenie (pierwsza/trzecia osoba) i t
 
 ## Jak dodać własne prace
 
-1. Wrzuć plik obrazu (jpg/png, najlepiej ≤ 1–2 MB) do folderu `images/`.
-2. Dodaj wpis do `artworks.json`:
+Obrazy w galerii są automatycznie kompresowane do WebP przez GitHub Action
+(`.github/workflows/generate-webp.yml`) — Ty wrzucasz oryginał, workflow sam
+generuje zoptymalizowaną wersję i commituje ją z powrotem do repo.
+
+1. Wrzuć oryginalny plik (jpg/png, dowolny rozsądny rozmiar) do folderu **`images-src/`**.
+2. Dodaj wpis do `artworks.json` — **z rozszerzeniem `.webp`** i ścieżką do folderu `images/` (nie `images-src/`):
    ```json
-   { "file": "images/moj-obraz.jpg", "title": "Tytuł pracy", "author": "Twoje imię" }
+   { "file": "images/moj-obraz.webp", "title": "Tytuł pracy", "author": "Twoje imię" }
    ```
-3. Wypchnij zmiany (`git add`, `git commit`, `git push`) — GitHub Pages przebuduje stronę automatycznie.
+3. Wypchnij zmiany (`git add`, `git commit`, `git push`).
+   GitHub Action automatycznie wygeneruje `images/moj-obraz.webp` (max 1600px, jakość 82) i doda go w osobnym commicie — GitHub Pages przebuduje stronę automatycznie po obu commitach.
+
+Chcesz zrobić to lokalnie zamiast czekać na Action? `pip install Pillow && python generate_webp.py` — wygeneruje wszystko na miejscu, wystarczy potem zwykłe `git add . && git commit && git push`.
+
+Ten sam mechanizm obsługuje też tapety (`wallpapers-src/` → `wallpapers/`) i tekstury materiałów (`textures-src/` → `textures/`) — normal/roughness mapy są kopiowane bez kompresji stratnej, żeby nie psuć oświetlenia PBR.
 
 Galeria ma **18 gniazd** rozmieszczonych wzdłuż ścian sali. Prace z `artworks.json` wypełniają je po kolei (pierwsza pozycja w pliku = pierwsze gniazdo, itd.). Gniazda bez wpisu pokazują placeholder "wolne miejsce".
 
@@ -50,12 +59,16 @@ python3 -m http.server 8000
 ## Struktura projektu
 
 ```
-index.html          — punkt wejścia, UI (ekran startowy, HUD)
-style.css            — style interfejsu
-artworks.json        — lista prac (edytuj, żeby dodać swoje)
-images/              — pliki obrazów
-src/main.js          — bootstrap sceny, pętla renderowania, tryb VR
-src/room.js          — geometria sali, oświetlenie, sloty na obrazy
-src/artworks.js       — wczytywanie i rozmieszczanie prac
-src/controls.js       — sterowanie, kamera FPP/TPP
+index.html            — punkt wejścia, UI (ekran startowy, HUD)
+style.css             — style interfejsu
+artworks.json         — lista prac (edytuj, żeby dodać swoje) — ścieżki wskazują na images/*.webp
+generate_webp.py       — konwersja *-src/ -> WebP (lokalnie lub przez Action)
+images-src/            — ORYGINAŁY prac (jpg/png) — tu wrzucasz nowe pliki
+images/                 — WYGENEROWANE .webp — to z nich korzysta strona, nie edytuj ręcznie
+wallpapers-src/, wallpapers/  — analogicznie, dla tapet tła
+textures-src/, textures/      — analogicznie, dla tekstur materiałów (podłoga/ściany/dywan)
+src/main.js            — bootstrap sceny, pętla renderowania, tryb VR
+src/room.js            — geometria sali, oświetlenie, sloty na obrazy
+src/artworks.js        — wczytywanie i rozmieszczanie prac
+src/controls.js        — sterowanie, kamera FPP/TPP
 ```
